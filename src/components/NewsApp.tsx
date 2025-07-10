@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { CategoryNav } from "./CategoryNav";
 import { NewsCarousel } from "./NewsCarousel";
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import newsHero from "@/assets/news-hero.jpg";
 import sportsNews from "@/assets/sports-news.jpg";
 import f1News from "@/assets/f1-news.jpg";
@@ -69,9 +71,11 @@ const mockArticles: NewsArticle[] = [
 const categories = ["all", "sport", "politics", "technology", "music", "history"];
 
 export const NewsApp = () => {
-  const [articles, setArticles] = useState<NewsArticle[]>(mockArticles);
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [activeCategory, setActiveCategory] = useState("all");
-  const [filteredArticles, setFilteredArticles] = useState<NewsArticle[]>(mockArticles);
+  const [filteredArticles, setFilteredArticles] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (activeCategory === "all") {
@@ -81,17 +85,50 @@ export const NewsApp = () => {
     }
   }, [activeCategory, articles]);
 
-  // Simulate API call - you can replace this with actual API integration
+  // Fetch news from NewsAPI via edge function
   useEffect(() => {
     const fetchNews = async () => {
-      // This is where you would typically make an API call
-      // For now, we're using mock data
-      console.log("Fetching news articles...");
-      setArticles(mockArticles);
+      try {
+        setLoading(true);
+        
+        const category = activeCategory === "all" ? "general" : activeCategory;
+        
+        const { data, error } = await supabase.functions.invoke('fetch-news', {
+          body: { 
+            category: category,
+            country: 'us',
+            pageSize: 20
+          }
+        });
+
+        if (error) {
+          console.error('Error fetching news:', error);
+          toast({
+            title: "Error fetching news",
+            description: "Failed to load latest news. Using cached articles.",
+            variant: "destructive",
+          });
+          // Fallback to mock data
+          setArticles(mockArticles);
+        } else {
+          setArticles(data?.articles || []);
+        }
+      } catch (error) {
+        console.error('Error calling edge function:', error);
+        toast({
+          title: "Connection error",
+          description: "Unable to fetch latest news. Using cached articles.",
+          variant: "destructive",
+        });
+        // Fallback to mock data
+        setArticles(mockArticles);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchNews();
-  }, []);
+  }, [activeCategory, toast]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -122,7 +159,13 @@ export const NewsApp = () => {
 
       {/* Main Content */}
       <main className="flex-1">
-        <NewsCarousel articles={filteredArticles} />
+        {loading ? (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-muted-foreground">Loading latest news...</div>
+          </div>
+        ) : (
+          <NewsCarousel articles={filteredArticles} />
+        )}
       </main>
     </div>
   );
