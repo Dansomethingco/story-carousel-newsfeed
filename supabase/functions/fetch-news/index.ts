@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
     // Map frontend categories to NewsAPI categories
     const categoryMapping: { [key: string]: string } = {
       'all': 'general',
+      'business': 'business',
       'sport': 'sports',
       'politics': 'general', // Politics stories are usually in general
       'technology': 'technology',

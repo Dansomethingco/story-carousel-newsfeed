@@ -68,7 +68,7 @@ const mockArticles: NewsArticle[] = [
   }
 ];
 
-const categories = ["all", "sport", "politics", "technology", "music", "history"];
+const categories = ["all", "business", "sport", "politics", "technology", "music", "history"];
 
 export const NewsApp = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
