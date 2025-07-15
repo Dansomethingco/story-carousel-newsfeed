@@ -30,13 +30,6 @@ export const NewsCard = ({ article }: NewsCardProps) => {
 
   return (
     <div className="w-full h-full flex flex-col bg-background p-6 snap-start">
-      {/* Category Badge */}
-      <div className="mb-4">
-        <Badge variant="secondary" className="px-4 py-2 text-sm font-medium rounded-full">
-          {article.category}
-        </Badge>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Title */}
