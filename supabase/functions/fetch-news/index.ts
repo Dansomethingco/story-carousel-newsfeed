@@ -14,14 +14,49 @@ Deno.serve(async (req) => {
       throw new Error('NewsAPI key not configured')
     }
 
-    // Construct NewsAPI URL
-    const url = new URL('https://newsapi.org/v2/top-headlines')
-    url.searchParams.set('apiKey', apiKey)
-    url.searchParams.set('country', country)
-    url.searchParams.set('pageSize', pageSize.toString())
+    // Map frontend categories to NewsAPI categories
+    const categoryMapping: { [key: string]: string } = {
+      'all': 'general',
+      'sport': 'sports',
+      'politics': 'general', // Politics stories are usually in general
+      'technology': 'technology',
+      'music': 'entertainment',
+      'history': 'general'
+    }
+
+    const newsApiCategory = categoryMapping[category] || 'general'
     
-    if (category && category !== 'general') {
-      url.searchParams.set('category', category)
+    // For politics, music, and history, we'll use keywords to filter more accurately
+    const useKeywords = ['politics', 'music', 'history'].includes(category)
+    let searchQuery = ''
+    
+    if (useKeywords) {
+      const keywordMapping: { [key: string]: string } = {
+        'politics': 'politics OR government OR election OR congress OR senate',
+        'music': 'music OR musician OR concert OR album OR song',
+        'history': 'history OR historical OR museum OR archaeology'
+      }
+      searchQuery = keywordMapping[category] || ''
+    }
+
+    // Construct NewsAPI URL - use everything endpoint for keyword searches
+    const baseUrl = useKeywords ? 'https://newsapi.org/v2/everything' : 'https://newsapi.org/v2/top-headlines'
+    const url = new URL(baseUrl)
+    url.searchParams.set('apiKey', apiKey)
+    url.searchParams.set('pageSize', pageSize.toString())
+    url.searchParams.set('sortBy', 'publishedAt')
+    url.searchParams.set('language', 'en')
+    
+    if (useKeywords && searchQuery) {
+      url.searchParams.set('q', searchQuery)
+      // For everything endpoint, we can also specify domains for better quality
+      url.searchParams.set('domains', 'bbc.com,cnn.com,reuters.com,apnews.com,npr.org')
+    } else {
+      // For top-headlines endpoint
+      url.searchParams.set('country', country)
+      if (newsApiCategory !== 'general') {
+        url.searchParams.set('category', newsApiCategory)
+      }
     }
 
     console.log('Fetching news from:', url.toString().replace(apiKey, '[REDACTED]'))
