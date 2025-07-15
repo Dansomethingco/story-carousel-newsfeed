@@ -139,7 +139,7 @@ export const NewsApp = () => {
             <img 
               src="/lovable-uploads/c6389b85-0967-4d79-8532-74f1d53b31f7.png" 
               alt="Today" 
-              className="h-8 w-auto object-contain"
+              className="h-12 w-auto object-contain"
             />
             <div className="text-sm text-muted-foreground">
               {new Date().toLocaleDateString('en-GB', { 
