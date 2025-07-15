@@ -20,24 +20,17 @@ Deno.serve(async (req) => {
       'business': 'business',
       'sport': 'sports',
       'politics': 'general', // Politics stories are usually in general
-      'technology': 'technology',
-      'music': 'entertainment',
-      'history': 'general'
+      'technology': 'technology'
     }
 
     const newsApiCategory = categoryMapping[category] || 'general'
     
-    // For politics, music, and history, we'll use keywords to filter more accurately
-    const useKeywords = ['politics', 'music', 'history'].includes(category)
+    // For politics, we'll use keywords to filter more accurately
+    const useKeywords = category === 'politics'
     let searchQuery = ''
     
     if (useKeywords) {
-      const keywordMapping: { [key: string]: string } = {
-        'politics': 'politics OR government OR election OR congress OR senate',
-        'music': 'music OR musician OR concert OR album OR song',
-        'history': 'history OR historical OR museum OR archaeology'
-      }
-      searchQuery = keywordMapping[category] || ''
+      searchQuery = 'politics OR government OR election OR congress OR senate'
     }
 
     // Construct NewsAPI URL - use everything endpoint for keyword searches
