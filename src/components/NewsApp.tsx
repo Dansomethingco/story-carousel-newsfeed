@@ -136,9 +136,11 @@ export const NewsApp = () => {
       <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-foreground">
-              <span className="text-accent">T</span>oday
-            </h1>
+            <img 
+              src="/lovable-uploads/c6389b85-0967-4d79-8532-74f1d53b31f7.png" 
+              alt="Today" 
+              className="h-8 w-auto object-contain"
+            />
             <div className="text-sm text-muted-foreground">
               {new Date().toLocaleDateString('en-GB', { 
                 weekday: 'long', 
