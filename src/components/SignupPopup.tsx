@@ -116,8 +116,8 @@ export function SignupPopup() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            Sign up for updates
+          <DialogTitle className="flex items-center justify-between text-lg font-medium">
+            sign up for updates
             <Button
               variant="ghost"
               size="sm"
@@ -130,8 +130,8 @@ export function SignupPopup() {
         </DialogHeader>
         
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Get the latest feature upgrades and exclusive discounts delivered straight to your inbox.
+          <p className="text-sm text-muted-foreground lowercase">
+            get the latest feature upgrades and exclusive discounts delivered straight to your inbox.
           </p>
 
           <Form {...form}>
@@ -141,9 +141,9 @@ export function SignupPopup() {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name</FormLabel>
+                    <FormLabel className="text-sm font-medium lowercase">first name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your first name" {...field} />
+                      <Input placeholder="enter your first name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -155,11 +155,11 @@ export function SignupPopup() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email Address</FormLabel>
+                    <FormLabel className="text-sm font-medium lowercase">email address</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder="enter your email"
                         {...field}
                       />
                     </FormControl>
@@ -173,7 +173,7 @@ export function SignupPopup() {
                 name="yearOfBirth"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Year of Birth</FormLabel>
+                    <FormLabel className="text-sm font-medium lowercase">year of birth</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -187,28 +187,28 @@ export function SignupPopup() {
                 )}
               />
 
-              <div className="flex space-x-2 pt-2">
+              <div className="flex gap-2 pt-2">
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1"
+                  className="flex-1 px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  {isSubmitting ? 'Signing up...' : 'Sign Up'}
+                  {isSubmitting ? 'signing up...' : 'sign up'}
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   onClick={handleDismiss}
-                  className="flex-1"
+                  className="flex-1 px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-secondary hover:bg-secondary/80 text-secondary-foreground"
                 >
-                  Maybe later
+                  maybe later
                 </Button>
               </div>
             </form>
           </Form>
 
-          <p className="text-xs text-muted-foreground">
-            We respect your privacy. You can unsubscribe at any time.
+          <p className="text-xs text-muted-foreground lowercase">
+            we respect your privacy. you can unsubscribe at any time.
           </p>
         </div>
       </DialogContent>
