@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { CategoryNav } from "./CategoryNav";
 import { NewsCarousel } from "./NewsCarousel";
+import { SignupPopup } from "./SignupPopup";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import newsHero from "@/assets/news-hero.jpg";
@@ -169,6 +170,9 @@ export const NewsApp = () => {
           <NewsCarousel articles={filteredArticles} />
         )}
       </main>
+
+      {/* Signup Popup */}
+      <SignupPopup />
     </div>
   );
 };
