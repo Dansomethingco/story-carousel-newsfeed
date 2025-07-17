@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { CategoryNav } from "./CategoryNav";
 import { NewsCarousel } from "./NewsCarousel";
 import { SignupPopup } from "./SignupPopup";
+import { PullToRefresh } from "./PullToRefresh";
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useCapacitor } from "@/hooks/useMobile";
+import { StatusBar, Style } from '@capacitor/status-bar';
 import newsHero from "@/assets/news-hero.jpg";
 import sportsNews from "@/assets/sports-news.jpg";
 import f1News from "@/assets/f1-news.jpg";
@@ -78,6 +81,7 @@ export const NewsApp = () => {
   const [filteredArticles, setFilteredArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { isNative, triggerHaptic } = useCapacitor();
 
   useEffect(() => {
     if (activeCategory === "all") {
@@ -87,9 +91,15 @@ export const NewsApp = () => {
     }
   }, [activeCategory, articles]);
 
-  // Fetch news from both sources and combine them
+  // Configure status bar for mobile
   useEffect(() => {
-    const fetchNews = async () => {
+    if (isNative) {
+      StatusBar.setStyle({ style: Style.Light });
+    }
+  }, [isNative]);
+
+  // Fetch news from both sources and combine them
+  const fetchNews = async () => {
       try {
         setLoading(true);
         
@@ -160,6 +170,7 @@ export const NewsApp = () => {
       }
     };
 
+  useEffect(() => {
     fetchNews();
   }, [activeCategory, toast]);
 
@@ -187,20 +198,25 @@ export const NewsApp = () => {
           <CategoryNav 
             categories={categories}
             activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
+            onCategoryChange={(category) => {
+              triggerHaptic();
+              setActiveCategory(category);
+            }}
           />
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 pt-36 md:pt-32">
-        {loading ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-muted-foreground">Loading latest news...</div>
-          </div>
-        ) : (
-          <NewsCarousel articles={filteredArticles} />
-        )}
+        <PullToRefresh onRefresh={fetchNews}>
+          {loading ? (
+            <div className="flex items-center justify-center h-96">
+              <div className="text-muted-foreground">Loading latest news...</div>
+            </div>
+          ) : (
+            <NewsCarousel articles={filteredArticles} />
+          )}
+        </PullToRefresh>
       </main>
 
       {/* Signup Popup */}
