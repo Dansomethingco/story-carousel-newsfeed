@@ -167,12 +167,12 @@ export const NewsApp = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 fixed top-0 left-0 right-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
+        <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
             <img 
               src="/lovable-uploads/c6389b85-0967-4d79-8532-74f1d53b31f7.png" 
               alt="Today" 
-              className="h-16 w-auto object-contain"
+              className="h-12 md:h-16 w-auto object-contain"
             />
             <div className="text-sm text-muted-foreground">
               {new Date().toLocaleDateString('en-GB', { 
@@ -193,7 +193,7 @@ export const NewsApp = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 pt-32">
+      <main className="flex-1 pt-36 md:pt-32">
         {loading ? (
           <div className="flex items-center justify-center h-96">
             <div className="text-muted-foreground">Loading latest news...</div>
