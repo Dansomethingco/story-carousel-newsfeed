@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { CategoryNav } from "./CategoryNav";
 import { NewsCarousel } from "./NewsCarousel";
 import { SignupPopup } from "./SignupPopup";
+import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import newsHero from "@/assets/news-hero.jpg";
@@ -69,13 +70,14 @@ const mockArticles: NewsArticle[] = [
   }
 ];
 
-const categories = ["all", "business", "sport", "politics", "technology"];
+const categories = ["all", "business", "sport", "politics", "technology", "entertainment"];
 
 export const NewsApp = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [activeCategory, setActiveCategory] = useState("all");
   const [filteredArticles, setFilteredArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newsSource, setNewsSource] = useState<'newsapi' | 'pa-media'>('newsapi');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export const NewsApp = () => {
     }
   }, [activeCategory, articles]);
 
-  // Fetch news from NewsAPI via edge function
+  // Fetch news from selected source via edge function
   useEffect(() => {
     const fetchNews = async () => {
       try {
@@ -98,7 +100,8 @@ export const NewsApp = () => {
           body: { 
             category: category,
             country: 'us',
-            pageSize: 20
+            pageSize: 20,
+            source: newsSource
           }
         });
 
@@ -129,7 +132,7 @@ export const NewsApp = () => {
     };
 
     fetchNews();
-  }, [activeCategory, toast]);
+  }, [activeCategory, newsSource, toast]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -142,13 +145,33 @@ export const NewsApp = () => {
               alt="Today" 
               className="h-16 w-auto object-contain"
             />
-            <div className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString('en-GB', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
+            <div className="flex items-center gap-4">
+              <div className="flex gap-2">
+                <Button
+                  variant={newsSource === 'newsapi' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setNewsSource('newsapi')}
+                  className="text-xs px-3 py-1 h-8 rounded-full"
+                >
+                  newsapi
+                </Button>
+                <Button
+                  variant={newsSource === 'pa-media' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setNewsSource('pa-media')}
+                  className="text-xs px-3 py-1 h-8 rounded-full"
+                >
+                  pa media
+                </Button>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {new Date().toLocaleDateString('en-GB', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </div>
             </div>
           </div>
           

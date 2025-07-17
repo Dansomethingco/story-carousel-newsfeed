@@ -7,8 +7,38 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { category = 'general', country = 'us', pageSize = 20 } = await req.json()
+    const { category = 'general', country = 'us', pageSize = 20, source = 'newsapi' } = await req.json()
     
+    // Handle PA Media source
+    if (source === 'pa-media') {
+      const paMediaApiKey = Deno.env.get('PA_MEDIA_API_KEY')
+      if (!paMediaApiKey) {
+        throw new Error('PA Media API key not configured')
+      }
+      
+      // Fetch from PA Media API
+      const paMediaResponse = await fetch('https://ngijsizuaxifqnjhbkuu.supabase.co/functions/v1/fetch-pa-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, pageSize })
+      })
+      
+      if (!paMediaResponse.ok) {
+        throw new Error('PA Media API request failed')
+      }
+      
+      const paMediaData = await paMediaResponse.json()
+      
+      return new Response(
+        JSON.stringify(paMediaData),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+    
+    // Default to NewsAPI
     const apiKey = Deno.env.get('NEWSAPI_KEY')
     if (!apiKey) {
       throw new Error('NewsAPI key not configured')
