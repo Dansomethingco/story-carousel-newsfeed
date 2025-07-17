@@ -77,7 +77,6 @@ export const NewsApp = () => {
   const [activeCategory, setActiveCategory] = useState("all");
   const [filteredArticles, setFilteredArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newsSource, setNewsSource] = useState<'newsapi' | 'pa-media'>('newsapi');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -88,7 +87,7 @@ export const NewsApp = () => {
     }
   }, [activeCategory, articles]);
 
-  // Fetch news from selected source via edge function
+  // Fetch news from both sources and combine them
   useEffect(() => {
     const fetchNews = async () => {
       try {
@@ -96,26 +95,56 @@ export const NewsApp = () => {
         
         const category = activeCategory === "all" ? "general" : activeCategory;
         
-        const { data, error } = await supabase.functions.invoke('fetch-news', {
-          body: { 
-            category: category,
-            country: 'us',
-            pageSize: 20,
-            source: newsSource
-          }
-        });
+        // Fetch from both NewsAPI and PA Media simultaneously
+        const [newsApiResponse, paMediaResponse] = await Promise.allSettled([
+          supabase.functions.invoke('fetch-news', {
+            body: { 
+              category: category,
+              country: 'us',
+              pageSize: 10,
+              source: 'newsapi'
+            }
+          }),
+          supabase.functions.invoke('fetch-news', {
+            body: { 
+              category: category,
+              country: 'us', 
+              pageSize: 10,
+              source: 'pa-media'
+            }
+          })
+        ]);
 
-        if (error) {
-          console.error('Error fetching news:', error);
+        
+        let combinedArticles: NewsArticle[] = [];
+        
+        // Process NewsAPI results
+        if (newsApiResponse.status === 'fulfilled' && newsApiResponse.value.data && !newsApiResponse.value.error) {
+          combinedArticles = [...combinedArticles, ...newsApiResponse.value.data.articles];
+        } else if (newsApiResponse.status === 'rejected') {
+          console.warn('NewsAPI failed:', newsApiResponse.reason);
+        }
+        
+        // Process PA Media results  
+        if (paMediaResponse.status === 'fulfilled' && paMediaResponse.value.data && !paMediaResponse.value.error) {
+          combinedArticles = [...combinedArticles, ...paMediaResponse.value.data.articles];
+        } else if (paMediaResponse.status === 'rejected') {
+          console.warn('PA Media failed:', paMediaResponse.reason);
+        }
+        
+        // Sort combined articles by publication date (newest first)
+        combinedArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+        
+        setArticles(combinedArticles);
+        
+        if (combinedArticles.length === 0) {
+          // Fall back to mock data if both APIs fail
           toast({
-            title: "Error fetching news",
-            description: "Failed to load latest news. Using cached articles.",
+            title: "Connection error",
+            description: "Unable to fetch latest news. Using cached articles.",
             variant: "destructive",
           });
-          // Fallback to mock data
           setArticles(mockArticles);
-        } else {
-          setArticles(data?.articles || []);
         }
       } catch (error) {
         console.error('Error calling edge function:', error);
@@ -132,7 +161,7 @@ export const NewsApp = () => {
     };
 
     fetchNews();
-  }, [activeCategory, newsSource, toast]);
+  }, [activeCategory, toast]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -145,33 +174,13 @@ export const NewsApp = () => {
               alt="Today" 
               className="h-16 w-auto object-contain"
             />
-            <div className="flex items-center gap-4">
-              <div className="flex gap-2">
-                <Button
-                  variant={newsSource === 'newsapi' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setNewsSource('newsapi')}
-                  className="text-xs px-3 py-1 h-8 rounded-full"
-                >
-                  newsapi
-                </Button>
-                <Button
-                  variant={newsSource === 'pa-media' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setNewsSource('pa-media')}
-                  className="text-xs px-3 py-1 h-8 rounded-full"
-                >
-                  pa media
-                </Button>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {new Date().toLocaleDateString('en-GB', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </div>
+            <div className="text-sm text-muted-foreground">
+              {new Date().toLocaleDateString('en-GB', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
             </div>
           </div>
           
