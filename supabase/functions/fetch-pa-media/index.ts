@@ -46,7 +46,9 @@ Deno.serve(async (req) => {
     const response = await fetch(url.toString(), {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'NewsApp/1.0'
+        'User-Agent': 'NewsApp/1.0',
+        'apikey': apiKey,
+        'X-Api-Key': apiKey
       }
     })
     
