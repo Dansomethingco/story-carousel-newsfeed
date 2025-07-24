@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
 
     const paMediaCategory = categoryMapping[category] || 'news'
     
-    // Construct PA Media API URL with proper authentication
-    const baseUrl = 'https://content.api.pressassociation.io/v1/content'
+    // Construct PA Media API URL using correct PA Media endpoint
+    const baseUrl = 'https://content.pamedia.io/v1/content'
     const url = new URL(baseUrl)
     url.searchParams.set('apikey', apiKey)
     url.searchParams.set('format', 'json')
