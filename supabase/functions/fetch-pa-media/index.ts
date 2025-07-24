@@ -29,65 +29,97 @@ Deno.serve(async (req) => {
 
     const paMediaCategory = categoryMapping[category] || 'news'
     
-    // Construct PA Media API URL using correct PA Media endpoint
-    const baseUrl = 'https://content.pamedia.io/v1/content'
-    const url = new URL(baseUrl)
-    url.searchParams.set('apikey', apiKey)
-    url.searchParams.set('format', 'json')
-    url.searchParams.set('size', pageSize.toString())
-    url.searchParams.set('sort', 'published:desc')
-    
-    // Add category filter if not 'all'
-    if (category !== 'all') {
-      url.searchParams.set('categories', paMediaCategory)
-    }
-
-    console.log('Fetching PA Media content from:', url.toString().replace(apiKey, '[REDACTED]'))
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'NewsApp/1.0'
-      }
+    console.log('Starting PA Media API call with:', {
+      category,
+      paMediaCategory,
+      pageSize,
+      apiKeyLength: apiKey?.length || 0,
+      apiKeyStart: apiKey?.substring(0, 8) || 'MISSING'
     })
     
-    console.log('PA Media API response status:', response.status)
-    console.log('PA Media API response headers:', Object.fromEntries(response.headers.entries()))
+    // Try multiple possible PA Media API endpoints
+    const possibleEndpoints = [
+      'https://content.pamedia.io/v1/content',
+      'https://content.pamedia.io/api/v1/content',
+      'https://api.pamedia.io/v1/content',
+      'https://content.api.pressassociation.io/v1/content'
+    ]
     
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('PA Media API error response:', errorText)
-      throw new Error(`PA Media API request failed: ${response.status} ${response.statusText} - ${errorText}`)
-    }
-
-    const data = await response.json()
-    console.log('PA Media API response structure:', Object.keys(data))
+    let lastError = null
     
-    // Transform the articles to match our NewsArticle interface
-    const transformedArticles = data.items?.map((item: any, index: number) => ({
-      id: `pa-${item.id || Date.now()}-${index}`,
-      title: item.headline || item.title || 'Untitled',
-      summary: item.description || item.summary || '',
-      content: item.body_text || item.content || item.description || '',
-      image: item.renditions?.[0]?.href || item.image_url || '/placeholder.svg',
-      source: 'PA Media',
-      category: category,
-      publishedAt: item.published || item.created_date || new Date().toISOString(),
-      readTime: `${Math.ceil((item.body_text?.length || 500) / 200)} min read`
-    })) || []
+    for (const baseUrl of possibleEndpoints) {
+      try {
+        console.log('Trying endpoint:', baseUrl)
+        
+        const url = new URL(baseUrl)
+        url.searchParams.set('apikey', apiKey)
+        url.searchParams.set('format', 'json')
+        url.searchParams.set('size', pageSize.toString())
+        url.searchParams.set('sort', 'published:desc')
+        
+        // Add category filter if not 'all'
+        if (category !== 'all') {
+          url.searchParams.set('categories', paMediaCategory)
+        }
 
-    console.log(`Successfully fetched ${transformedArticles.length} PA Media articles`)
+        console.log('Fetching PA Media content from:', url.toString().replace(apiKey, '[REDACTED]'))
 
-    return new Response(
-      JSON.stringify({ 
-        articles: transformedArticles,
-        totalResults: data.total || transformedArticles.length 
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+        const response = await fetch(url.toString(), {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'NewsApp/1.0'
+          }
+        })
+        
+        console.log('PA Media API response status:', response.status)
+        console.log('PA Media API response headers:', Object.fromEntries(response.headers.entries()))
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`Endpoint ${baseUrl} failed: ${response.status} ${response.statusText} - ${errorText}`)
+          lastError = new Error(`${baseUrl}: ${response.status} ${response.statusText} - ${errorText}`)
+          continue // Try next endpoint
+        }
+
+        const data = await response.json()
+        console.log('PA Media API response structure:', Object.keys(data))
+        console.log('Sample response data:', JSON.stringify(data, null, 2).substring(0, 500))
+        
+        // Transform the articles to match our NewsArticle interface
+        const transformedArticles = data.items?.map((item: any, index: number) => ({
+          id: `pa-${item.id || Date.now()}-${index}`,
+          title: item.headline || item.title || 'Untitled',
+          summary: item.description || item.summary || '',
+          content: item.body_text || item.content || item.description || '',
+          image: item.renditions?.[0]?.href || item.image_url || '/placeholder.svg',
+          source: 'PA Media',
+          category: category,
+          publishedAt: item.published || item.created_date || new Date().toISOString(),
+          readTime: `${Math.ceil((item.body_text?.length || 500) / 200)} min read`
+        })) || []
+
+        console.log(`Successfully fetched ${transformedArticles.length} PA Media articles from ${baseUrl}`)
+
+        return new Response(
+          JSON.stringify({ 
+            articles: transformedArticles,
+            totalResults: data.total || transformedArticles.length 
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+        
+      } catch (endpointError) {
+        console.error(`Error with endpoint ${baseUrl}:`, endpointError)
+        lastError = endpointError
+        continue // Try next endpoint
       }
-    )
+    }
+    
+    // If we get here, all endpoints failed
+    throw lastError || new Error('All PA Media API endpoints failed')
 
   } catch (error) {
     console.error('Error fetching PA Media content:', error)
