@@ -28,10 +28,9 @@ Deno.serve(async (req) => {
 
     const paMediaCategory = categoryMapping[category] || 'news'
     
-    // Construct PA Media API URL
-    const baseUrl = 'https://content.pamedia.io/api/v1/content'
+    // Construct PA Media API URL - using correct endpoint from documentation
+    const baseUrl = 'https://content.api.pressassociation.io/v1'
     const url = new URL(baseUrl)
-    url.searchParams.set('apikey', apiKey)
     url.searchParams.set('format', 'json')
     url.searchParams.set('size', pageSize.toString())
     url.searchParams.set('sort', 'published:desc')
@@ -41,14 +40,13 @@ Deno.serve(async (req) => {
       url.searchParams.set('categories', paMediaCategory)
     }
 
-    console.log('Fetching PA Media content from:', url.toString().replace(apiKey, '[REDACTED]'))
+    console.log('Fetching PA Media content from:', url.toString())
 
     const response = await fetch(url.toString(), {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'NewsApp/1.0',
-        'apikey': apiKey,
-        'X-Api-Key': apiKey
+        'apikey': apiKey  // Using correct authentication method from PA Media docs
       }
     })
     
