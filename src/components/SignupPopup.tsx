@@ -56,10 +56,10 @@ export function SignupPopup() {
       return;
     }
 
-    // Show popup after 15 seconds
+    // Show popup after 5 seconds
     const timer = setTimeout(() => {
       setIsOpen(true);
-    }, 15000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);
