@@ -1,3 +1,4 @@
+
 import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
@@ -28,9 +29,10 @@ Deno.serve(async (req) => {
 
     const paMediaCategory = categoryMapping[category] || 'news'
     
-    // Construct PA Media API URL - using correct endpoint from documentation
-    const baseUrl = 'https://content.api.pressassociation.io/v1'
+    // Construct PA Media API URL with proper authentication
+    const baseUrl = 'https://content.api.pressassociation.io/v1/content'
     const url = new URL(baseUrl)
+    url.searchParams.set('apikey', apiKey)
     url.searchParams.set('format', 'json')
     url.searchParams.set('size', pageSize.toString())
     url.searchParams.set('sort', 'published:desc')
@@ -40,21 +42,26 @@ Deno.serve(async (req) => {
       url.searchParams.set('categories', paMediaCategory)
     }
 
-    console.log('Fetching PA Media content from:', url.toString())
+    console.log('Fetching PA Media content from:', url.toString().replace(apiKey, '[REDACTED]'))
 
     const response = await fetch(url.toString(), {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'NewsApp/1.0',
-        'apikey': apiKey  // Using correct authentication method from PA Media docs
+        'User-Agent': 'NewsApp/1.0'
       }
     })
     
+    console.log('PA Media API response status:', response.status)
+    console.log('PA Media API response headers:', Object.fromEntries(response.headers.entries()))
+    
     if (!response.ok) {
-      throw new Error(`PA Media API request failed: ${response.status} ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('PA Media API error response:', errorText)
+      throw new Error(`PA Media API request failed: ${response.status} ${response.statusText} - ${errorText}`)
     }
 
     const data = await response.json()
+    console.log('PA Media API response structure:', Object.keys(data))
     
     // Transform the articles to match our NewsArticle interface
     const transformedArticles = data.items?.map((item: any, index: number) => ({
