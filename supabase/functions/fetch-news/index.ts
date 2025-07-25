@@ -246,18 +246,21 @@ async function fetchPAMedia(category: string, pageSize: number) {
         // Create unique ID with timestamp and category to prevent duplicates
         const uniqueId = `pa-${category}-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`;
         
-        // Better image handling - check multiple PA Media image fields
+        // Extract image from PA Media associations.featureimage
         let imageUrl = null;
-        if (item.renditions && item.renditions.length > 0) {
-          // Try to find the best quality image
+        if (item.associations?.featureimage?.renditions && item.associations.featureimage.renditions.length > 0) {
+          // Find the best quality image from PA Media feature image renditions
+          const bestImage = item.associations.featureimage.renditions.find((r: any) => r.width > 600) || 
+                           item.associations.featureimage.renditions[0];
+          imageUrl = bestImage?.href;
+        } else if (item.renditions && item.renditions.length > 0) {
+          // Fallback to direct renditions if available
           const bestImage = item.renditions.find((r: any) => r.width > 400) || item.renditions[0];
           imageUrl = bestImage?.href;
         } else if (item.picture?.href) {
           imageUrl = item.picture.href;
         } else if (item.image?.url) {
           imageUrl = item.image.url;
-        } else if (item.thumbnail?.href) {
-          imageUrl = item.thumbnail.href;
         }
         
         // Fallback to category-specific placeholder if no image found
