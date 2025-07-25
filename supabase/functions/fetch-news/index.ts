@@ -158,7 +158,6 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
 }
 
 async function fetchPAMedia(category: string, pageSize: number) {
-  // Map our categories to PA Media categories
   const categoryMapping: { [key: string]: string } = {
     'sport': 'sport',
     'entertainment': 'entertainment', 
@@ -178,16 +177,26 @@ async function fetchPAMedia(category: string, pageSize: number) {
   for (let i = 0; i < apiKeys.length; i++) {
     const apiKey = apiKeys[i]
     try {
-      console.log(`Trying PA Media API key ${i + 1}/${apiKeys.length}`)
+      console.log(`Trying PA Media API key ${i + 1}/${apiKeys.length} for category: ${category}`)
       
       const url = new URL(baseUrl)
       url.searchParams.set('apikey', apiKey)
       url.searchParams.set('format', 'json')
       url.searchParams.set('size', pageSize.toString())
       
+      // Add timestamp to ensure different results for each call
+      url.searchParams.set('_t', Date.now().toString())
+      
       if (paMediaCategory) {
         url.searchParams.set('category', paMediaCategory)
         console.log(`Using PA Media category filter: ${paMediaCategory}`)
+      } else {
+        // For categories without specific PA Media mapping, add search terms
+        if (category === 'politics') {
+          url.searchParams.set('q', 'politics government election')
+        } else if (category === 'technology') {
+          url.searchParams.set('q', 'technology tech AI computer')
+        }
       }
       
       console.log('PA Media URL:', url.toString().replace(apiKey, '[REDACTED]'))
@@ -225,12 +234,37 @@ async function fetchPAMedia(category: string, pageSize: number) {
           mappedCategory = 'entertainment';
         }
         
+        // Create unique ID with timestamp and category to prevent duplicates
+        const uniqueId = `pa-${category}-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`;
+        
+        // Better image handling - check multiple PA Media image fields
+        let imageUrl = null;
+        if (item.renditions && item.renditions.length > 0) {
+          // Try to find the best quality image
+          const bestImage = item.renditions.find((r: any) => r.width > 400) || item.renditions[0];
+          imageUrl = bestImage?.href;
+        } else if (item.picture?.href) {
+          imageUrl = item.picture.href;
+        } else if (item.image?.url) {
+          imageUrl = item.image.url;
+        } else if (item.thumbnail?.href) {
+          imageUrl = item.thumbnail.href;
+        }
+        
+        // Fallback to category-specific placeholder if no image found
+        const categoryImages = {
+          sport: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=400&fit=crop',
+          business: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&h=400&fit=crop',
+          entertainment: 'https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?w=800&h=400&fit=crop',
+          technology: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=400&fit=crop'
+        };
+        
         return {
-          id: `pa-${item.uri || Date.now()}-${index}`,
+          id: uniqueId,
           title: item.headline || item.title || item.name || 'Untitled',
           summary: item.description_text || item.description || item.summary || '',
           content: item.body_text || item.content || item.body || item.description_text || '',
-          image: item.renditions?.[0]?.href || `https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=400&fit=crop`,
+          image: imageUrl || categoryImages[mappedCategory] || `https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=400&fit=crop`,
           source: 'PA Media',
           category: mappedCategory,
           publishedAt: item.versioncreated || item.published || item.created_date || new Date().toISOString(),
