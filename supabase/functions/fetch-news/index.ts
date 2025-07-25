@@ -11,31 +11,81 @@ Deno.serve(async (req) => {
     
     // Handle PA Media source
     if (source === 'pa-media') {
-      const paMediaApiKey = Deno.env.get('PA_MEDIA_API_KEY')
-      if (!paMediaApiKey) {
-        throw new Error('PA Media API key not configured')
-      }
+      console.log('Fetching from PA Media API...')
       
-      // Fetch from PA Media API
-      const paMediaResponse = await fetch('https://ngijsizuaxifqnjhbkuu.supabase.co/functions/v1/fetch-pa-media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, pageSize })
-      })
+      // Use the provided API keys - try both as fallbacks
+      const apiKeys = ['b3ganyk474f4s4ct6dmkcnj7', 'y6zbp9drrb9fsrntc2p2rq7s']
+      const baseUrl = 'https://content.api.pressassociation.io/v1/item'
       
-      if (!paMediaResponse.ok) {
-        throw new Error('PA Media API request failed')
-      }
+      let lastError = null
       
-      const paMediaData = await paMediaResponse.json()
-      
-      return new Response(
-        JSON.stringify(paMediaData),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
+      // Try each API key
+      for (let i = 0; i < apiKeys.length; i++) {
+        const apiKey = apiKeys[i]
+        try {
+          console.log(`Trying PA Media API key ${i + 1}/${apiKeys.length}`)
+          
+          const url = new URL(baseUrl)
+          url.searchParams.set('apikey', apiKey)
+          url.searchParams.set('format', 'json')
+          url.searchParams.set('size', pageSize.toString())
+          
+          console.log('PA Media URL:', url.toString().replace(apiKey, '[REDACTED]'))
+
+          const paResponse = await fetch(url.toString(), {
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'NewsApp/1.0'
+            }
+          })
+          
+          console.log('PA Media response status:', paResponse.status)
+          
+          if (!paResponse.ok) {
+            const errorText = await paResponse.text()
+            console.error(`PA Media API key ${i + 1} failed: ${paResponse.status} - ${errorText}`)
+            lastError = new Error(`API key ${i + 1}: ${paResponse.status} ${paResponse.statusText}`)
+            continue
+          }
+
+          const paData = await paResponse.json()
+          console.log('PA Media response structure:', Object.keys(paData))
+          
+          // Transform PA Media articles to match our interface
+          const transformedArticles = paData.items?.map((item: any, index: number) => ({
+            id: `pa-${item.id || Date.now()}-${index}`,
+            title: item.headline || item.title || 'Untitled',
+            summary: item.description || item.summary || '',
+            content: item.body_text || item.content || item.description || '',
+            image: item.renditions?.[0]?.href || item.image_url || '/placeholder.svg',
+            source: 'PA Media',
+            category: category,
+            publishedAt: item.published || item.created_date || new Date().toISOString(),
+            readTime: `${Math.ceil((item.body_text?.length || 500) / 200)} min read`
+          })) || []
+
+          console.log(`Successfully fetched ${transformedArticles.length} PA Media articles`)
+
+          return new Response(
+            JSON.stringify({ 
+              articles: transformedArticles,
+              totalResults: paData.total || transformedArticles.length 
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            }
+          )
+          
+        } catch (keyError) {
+          console.error(`Error with PA Media API key ${i + 1}:`, keyError)
+          lastError = keyError
+          continue
         }
-      )
+      }
+      
+      // If we get here, all API keys failed
+      throw lastError || new Error('All PA Media API keys failed')
     }
     
     // Default to NewsAPI
