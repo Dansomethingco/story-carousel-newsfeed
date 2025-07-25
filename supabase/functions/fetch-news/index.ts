@@ -13,6 +13,18 @@ Deno.serve(async (req) => {
     if (source === 'pa-media') {
       console.log('Fetching from PA Media API with category:', category)
       
+      // Map our categories to PA Media categories
+      const categoryMapping: { [key: string]: string } = {
+        'sport': 'sport',
+        'entertainment': 'entertainment', 
+        'business': 'finance',
+        'all': '', // No category filter for "all"
+        'politics': '', // PA Media doesn't have politics, so no filter
+        'technology': '' // PA Media doesn't have technology, so no filter
+      }
+      
+      const paMediaCategory = categoryMapping[category] || ''
+      
       // Use the provided API keys - try both as fallbacks
       const apiKeys = ['b3ganyk474f4s4ct6dmkcnj7', 'y6zbp9drrb9fsrntc2p2rq7s']
       const baseUrl = 'https://content.api.pressassociation.io/v1/item'
@@ -29,7 +41,14 @@ Deno.serve(async (req) => {
           url.searchParams.set('apikey', apiKey)
           url.searchParams.set('format', 'json')
           url.searchParams.set('size', pageSize.toString())
-          // Note: Not adding category parameter since PA Media might not support it
+          
+          // Add category filter if we have a mapped category
+          if (paMediaCategory) {
+            url.searchParams.set('category', paMediaCategory)
+            console.log(`Using PA Media category filter: ${paMediaCategory}`)
+          } else {
+            console.log('No category filter applied - fetching all PA Media content')
+          }
           
           console.log('PA Media URL:', url.toString().replace(apiKey, '[REDACTED]'))
 
