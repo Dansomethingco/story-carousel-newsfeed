@@ -209,6 +209,11 @@ async function fetchPAMedia(category: string, pageSize: number) {
       const paData = await paResponse.json()
       const items = paData.item || paData.items || paData.data || paData.articles || []
       
+      // Log PA Media response structure to debug image fields
+      if (items.length > 0) {
+        console.log('PA Media item structure:', JSON.stringify(items[0], null, 2))
+      }
+      
       return items.map((item: any, index: number) => {
         // Map PA Media categories back to our frontend categories
         let mappedCategory = category;
