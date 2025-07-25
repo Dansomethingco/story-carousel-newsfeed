@@ -246,21 +246,34 @@ async function fetchPAMedia(category: string, pageSize: number) {
         // Create unique ID with timestamp and category to prevent duplicates
         const uniqueId = `pa-${category}-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`;
         
-        // Extract image from PA Media associations.featureimage
+        // Extract image from PA Media associations.featureimage with detailed logging
         let imageUrl = null;
+        console.log('=== IMAGE EXTRACTION DEBUG ===')
+        console.log('Item has associations:', !!item.associations)
+        console.log('Item has associations.featureimage:', !!item.associations?.featureimage)
+        console.log('Feature image renditions:', item.associations?.featureimage?.renditions)
+        
         if (item.associations?.featureimage?.renditions && item.associations.featureimage.renditions.length > 0) {
+          console.log('Using featureimage renditions:', item.associations.featureimage.renditions.length, 'available')
           // Find the best quality image from PA Media feature image renditions
           const bestImage = item.associations.featureimage.renditions.find((r: any) => r.width > 600) || 
                            item.associations.featureimage.renditions[0];
           imageUrl = bestImage?.href;
+          console.log('Selected image URL from featureimage:', imageUrl)
         } else if (item.renditions && item.renditions.length > 0) {
+          console.log('Using direct renditions:', item.renditions.length, 'available')
           // Fallback to direct renditions if available
           const bestImage = item.renditions.find((r: any) => r.width > 400) || item.renditions[0];
           imageUrl = bestImage?.href;
+          console.log('Selected image URL from direct renditions:', imageUrl)
         } else if (item.picture?.href) {
           imageUrl = item.picture.href;
+          console.log('Using picture.href:', imageUrl)
         } else if (item.image?.url) {
           imageUrl = item.image.url;
+          console.log('Using image.url:', imageUrl)
+        } else {
+          console.log('No image found in PA Media item')
         }
         
         // Fallback to category-specific placeholder if no image found
