@@ -9,9 +9,11 @@ Deno.serve(async (req) => {
   try {
     const { category = 'general', country = 'us', pageSize = 20 } = await req.json()
     
-    console.log('Fetching news for category:', category)
+    console.log('=== FETCH NEWS STARTED ===')
+    console.log('Category:', category, 'Country:', country, 'PageSize:', pageSize)
     
     // Fetch from both NewsAPI and PA Media in parallel
+    console.log('Starting parallel fetch from NewsAPI and PA Media...')
     const [newsApiData, paMediaData] = await Promise.allSettled([
       fetchNewsAPI(category, country, Math.ceil(pageSize * 0.75)), // 75% from NewsAPI
       fetchPAMedia(category, Math.ceil(pageSize * 0.25)) // 25% from PA Media
