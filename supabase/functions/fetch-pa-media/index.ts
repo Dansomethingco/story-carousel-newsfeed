@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
     const { category = 'news', pageSize = 20 } = await req.json()
     
     // Use the provided API keys - try both as fallbacks
-    const apiKeys = ['b3ganyk474f4s4ct6dmkcnj7', 'y6zbp9drrb9fsrntc2p2rq7s']
+    const apiKeys = ['b3ganyk474f4s4ct6dmkcnj7', 'y6zbp9drrb9fsrntc2p2rq7s'] // Updated API keys
     
     console.log('Starting PA Media API call with:', {
       category,
