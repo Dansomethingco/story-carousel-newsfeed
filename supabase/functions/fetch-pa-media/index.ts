@@ -1,4 +1,3 @@
-
 import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
@@ -11,22 +10,24 @@ Deno.serve(async (req) => {
     const { category = 'news', pageSize = 20 } = await req.json()
     
     // Use the provided API keys - try both as fallbacks
-    const apiKeys = ['b3ganyk474f4s4ct6dmkcnj7', 'y6zbp9drrb9fsrntc2p2rq7s'] // Updated API keys
+    const apiKeys = ['b3ganyk474f4s4ct6dmkcnj7', 'y6zbp9drrb9fsrntc2p2rq7s']
+    const baseUrl = 'https://content.api.pressassociation.io/v1/item'
     
     console.log('Starting PA Media API call with:', {
       category,
       pageSize,
+      baseUrl,
       availableKeys: apiKeys.length
     })
     
     let lastError = null
     
     // Try each API key
-    for (const apiKey of apiKeys) {
+    for (let i = 0; i < apiKeys.length; i++) {
+      const apiKey = apiKeys[i]
       try {
-        console.log('Trying API key:', apiKey.substring(0, 8) + '...')
+        console.log(`Trying API key ${i + 1}/${apiKeys.length}:`, apiKey.substring(0, 8) + '...')
         
-        const baseUrl = 'https://content.api.pressassociation.io/v1/item'
         const url = new URL(baseUrl)
         url.searchParams.set('apikey', apiKey)
         url.searchParams.set('format', 'json')
@@ -46,9 +47,9 @@ Deno.serve(async (req) => {
         
         if (!response.ok) {
           const errorText = await response.text()
-          console.error(`Endpoint ${baseUrl} failed: ${response.status} ${response.statusText} - ${errorText}`)
-          lastError = new Error(`${baseUrl}: ${response.status} ${response.statusText} - ${errorText}`)
-          continue // Try next endpoint
+          console.error(`API key ${i + 1} failed: ${response.status} ${response.statusText} - ${errorText}`)
+          lastError = new Error(`API key ${i + 1}: ${response.status} ${response.statusText} - ${errorText}`)
+          continue // Try next API key
         }
 
         const data = await response.json()
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
           readTime: `${Math.ceil((item.body_text?.length || 500) / 200)} min read`
         })) || []
 
-        console.log(`Successfully fetched ${transformedArticles.length} PA Media articles from ${baseUrl}`)
+        console.log(`Successfully fetched ${transformedArticles.length} PA Media articles using API key ${i + 1}`)
 
         return new Response(
           JSON.stringify({ 
@@ -81,15 +82,15 @@ Deno.serve(async (req) => {
           }
         )
         
-      } catch (endpointError) {
-        console.error(`Error with endpoint ${baseUrl}:`, endpointError)
-        lastError = endpointError
-        continue // Try next endpoint
+      } catch (keyError) {
+        console.error(`Error with API key ${i + 1}:`, keyError)
+        lastError = keyError
+        continue // Try next API key
       }
     }
     
-    // If we get here, all endpoints failed
-    throw lastError || new Error('All PA Media API endpoints failed')
+    // If we get here, all API keys failed
+    throw lastError || new Error('All PA Media API keys failed')
 
   } catch (error) {
     console.error('Error fetching PA Media content:', error)
