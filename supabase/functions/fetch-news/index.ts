@@ -209,17 +209,29 @@ async function fetchPAMedia(category: string, pageSize: number) {
       const paData = await paResponse.json()
       const items = paData.item || paData.items || paData.data || paData.articles || []
       
-      return items.map((item: any, index: number) => ({
-        id: `pa-${item.uri || Date.now()}-${index}`,
-        title: item.headline || item.title || item.name || 'Untitled',
-        summary: item.description_text || item.description || item.summary || '',
-        content: item.body_text || item.content || item.body || item.description_text || '',
-        image: item.renditions?.[0]?.href || `https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=400&fit=crop`,
-        source: 'PA Media',
-        category: category,
-        publishedAt: item.versioncreated || item.published || item.created_date || new Date().toISOString(),
-        readTime: `${Math.ceil((item.body_text?.length || item.content?.length || 500) / 200)} min read`
-      }))
+      return items.map((item: any, index: number) => {
+        // Map PA Media categories back to our frontend categories
+        let mappedCategory = category;
+        if (paMediaCategory === 'finance') {
+          mappedCategory = 'business';
+        } else if (paMediaCategory === 'sport') {
+          mappedCategory = 'sport';
+        } else if (paMediaCategory === 'entertainment') {
+          mappedCategory = 'entertainment';
+        }
+        
+        return {
+          id: `pa-${item.uri || Date.now()}-${index}`,
+          title: item.headline || item.title || item.name || 'Untitled',
+          summary: item.description_text || item.description || item.summary || '',
+          content: item.body_text || item.content || item.body || item.description_text || '',
+          image: item.renditions?.[0]?.href || `https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=400&fit=crop`,
+          source: 'PA Media',
+          category: mappedCategory,
+          publishedAt: item.versioncreated || item.published || item.created_date || new Date().toISOString(),
+          readTime: `${Math.ceil((item.body_text?.length || item.content?.length || 500) / 200)} min read`
+        }
+      })
       
     } catch (keyError) {
       console.error(`Error with PA Media API key ${i + 1}:`, keyError)
