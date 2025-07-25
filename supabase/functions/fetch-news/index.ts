@@ -223,6 +223,13 @@ async function fetchPAMedia(category: string, pageSize: number) {
       // Log PA Media response structure to debug image fields
       if (items.length > 0) {
         console.log('PA Media item structure:', JSON.stringify(items[0], null, 2))
+        console.log('Available image fields:', Object.keys(items[0]).filter(key => 
+          key.toLowerCase().includes('image') || 
+          key.toLowerCase().includes('picture') || 
+          key.toLowerCase().includes('photo') || 
+          key.toLowerCase().includes('rendition') ||
+          key.toLowerCase().includes('media')
+        ))
       }
       
       return items.map((item: any, index: number) => {
