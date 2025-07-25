@@ -10,58 +10,28 @@ Deno.serve(async (req) => {
   try {
     const { category = 'news', pageSize = 20 } = await req.json()
     
-    const apiKey = Deno.env.get('PA_MEDIA_API_KEY')
-    if (!apiKey) {
-      throw new Error('PA Media API key not configured')
-    }
-
-    // Map our categories to PA Media's Ready categories
-    const categoryMapping: { [key: string]: string } = {
-      'all': 'news',
-      'general': 'news',
-      'business': 'business',
-      'sport': 'sport',
-      'politics': 'news', // Politics stories are usually in news
-      'technology': 'news',
-      'entertainment': 'entertainment',
-      'lifestyle': 'real-life'
-    }
-
-    const paMediaCategory = categoryMapping[category] || 'news'
+    // Use the provided API keys - try both as fallbacks
+    const apiKeys = ['b3ganyk474f4s4ct6dmkcnj7', 'y6zbp9drrb9fsrntc2p2rq7s']
     
     console.log('Starting PA Media API call with:', {
       category,
-      paMediaCategory,
       pageSize,
-      apiKeyLength: apiKey?.length || 0,
-      apiKeyStart: apiKey?.substring(0, 8) || 'MISSING'
+      availableKeys: apiKeys.length
     })
-    
-    // Try multiple possible PA Media API endpoints
-    const possibleEndpoints = [
-      'https://content.pamedia.io/v1/content',
-      'https://content.pamedia.io/api/v1/content',
-      'https://api.pamedia.io/v1/content',
-      'https://content.api.pressassociation.io/v1/content'
-    ]
     
     let lastError = null
     
-    for (const baseUrl of possibleEndpoints) {
+    // Try each API key
+    for (const apiKey of apiKeys) {
       try {
-        console.log('Trying endpoint:', baseUrl)
+        console.log('Trying API key:', apiKey.substring(0, 8) + '...')
         
+        const baseUrl = 'https://content.api.pressassociation.io/v1/item'
         const url = new URL(baseUrl)
         url.searchParams.set('apikey', apiKey)
         url.searchParams.set('format', 'json')
         url.searchParams.set('size', pageSize.toString())
-        url.searchParams.set('sort', 'published:desc')
         
-        // Add category filter if not 'all'
-        if (category !== 'all') {
-          url.searchParams.set('categories', paMediaCategory)
-        }
-
         console.log('Fetching PA Media content from:', url.toString().replace(apiKey, '[REDACTED]'))
 
         const response = await fetch(url.toString(), {
