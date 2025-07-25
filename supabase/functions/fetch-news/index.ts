@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
           console.log('PA Media sample data:', JSON.stringify(paData, null, 2).substring(0, 1000))
           
           // Check different possible response structures
-          const items = paData.items || paData.data || paData.articles || []
+          const items = paData.item || paData.items || paData.data || paData.articles || []
           
           // Transform PA Media articles to match our interface
           const transformedArticles = items.map((item: any, index: number) => ({
