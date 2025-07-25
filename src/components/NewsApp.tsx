@@ -98,57 +98,34 @@ export const NewsApp = () => {
     }
   }, [isNative]);
 
-  // Fetch news from both sources and combine them
+  // Fetch news from unified endpoint that combines both sources
   const fetchNews = async () => {
       try {
         setLoading(true);
         
         const category = activeCategory === "all" ? "general" : activeCategory;
         
-        // Fetch from both NewsAPI and PA Media simultaneously
-        const [newsApiResponse, paMediaResponse] = await Promise.allSettled([
-          supabase.functions.invoke('fetch-news', {
-            body: { 
-              category: category,
-              country: 'us',
-              pageSize: 10,
-              source: 'newsapi'
-            }
-          }),
-          supabase.functions.invoke('fetch-news', {
-            body: { 
-              category: category,
-              country: 'us', 
-              pageSize: 10,
-              source: 'pa-media'
-            }
-          })
-        ]);
+        // Call unified fetch-news endpoint
+        const response = await supabase.functions.invoke('fetch-news', {
+          body: { 
+            category: category,
+            country: 'us',
+            pageSize: 20
+          }
+        });
 
-        
-        let combinedArticles: NewsArticle[] = [];
-        
-        // Process NewsAPI results
-        if (newsApiResponse.status === 'fulfilled' && newsApiResponse.value.data && !newsApiResponse.value.error) {
-          combinedArticles = [...combinedArticles, ...newsApiResponse.value.data.articles];
-        } else if (newsApiResponse.status === 'rejected') {
-          console.warn('NewsAPI failed:', newsApiResponse.reason);
+        if (response.error) {
+          throw new Error(response.error.message || 'Failed to fetch news');
         }
+
+        const data = response.data;
         
-        // Process PA Media results  
-        if (paMediaResponse.status === 'fulfilled' && paMediaResponse.value.data && !paMediaResponse.value.error) {
-          combinedArticles = [...combinedArticles, ...paMediaResponse.value.data.articles];
-        } else if (paMediaResponse.status === 'rejected') {
-          console.warn('PA Media failed:', paMediaResponse.reason);
-        }
-        
-        // Sort combined articles by publication date (newest first)
-        combinedArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-        
-        setArticles(combinedArticles);
-        
-        if (combinedArticles.length === 0) {
-          // Fall back to mock data if both APIs fail
+        if (data.articles && data.articles.length > 0) {
+          setArticles(data.articles);
+          console.log(`Successfully loaded ${data.articles.length} articles (mixed sources)`);
+        } else {
+          // Fallback to mock data if no articles received
+          console.warn('No articles received from API, using mock data');
           toast({
             title: "Connection error",
             description: "Unable to fetch latest news. Using cached articles.",
@@ -156,6 +133,7 @@ export const NewsApp = () => {
           });
           setArticles(mockArticles);
         }
+        
       } catch (error) {
         console.error('Error calling edge function:', error);
         toast({
