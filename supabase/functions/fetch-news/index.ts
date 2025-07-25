@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
     
     // Handle PA Media source
     if (source === 'pa-media') {
-      console.log('Fetching from PA Media API...')
+      console.log('Fetching from PA Media API with category:', category)
       
       // Use the provided API keys - try both as fallbacks
       const apiKeys = ['b3ganyk474f4s4ct6dmkcnj7', 'y6zbp9drrb9fsrntc2p2rq7s']
@@ -23,12 +23,13 @@ Deno.serve(async (req) => {
       for (let i = 0; i < apiKeys.length; i++) {
         const apiKey = apiKeys[i]
         try {
-          console.log(`Trying PA Media API key ${i + 1}/${apiKeys.length}`)
+          console.log(`Trying PA Media API key ${i + 1}/${apiKeys.length}: ${apiKey.substring(0, 8)}...`)
           
           const url = new URL(baseUrl)
           url.searchParams.set('apikey', apiKey)
           url.searchParams.set('format', 'json')
           url.searchParams.set('size', pageSize.toString())
+          // Note: Not adding category parameter since PA Media might not support it
           
           console.log('PA Media URL:', url.toString().replace(apiKey, '[REDACTED]'))
 
@@ -40,36 +41,41 @@ Deno.serve(async (req) => {
           })
           
           console.log('PA Media response status:', paResponse.status)
+          console.log('PA Media response headers:', Object.fromEntries(paResponse.headers.entries()))
           
           if (!paResponse.ok) {
             const errorText = await paResponse.text()
             console.error(`PA Media API key ${i + 1} failed: ${paResponse.status} - ${errorText}`)
-            lastError = new Error(`API key ${i + 1}: ${paResponse.status} ${paResponse.statusText}`)
+            lastError = new Error(`API key ${i + 1}: ${paResponse.status} ${paResponse.statusText} - ${errorText}`)
             continue
           }
 
           const paData = await paResponse.json()
           console.log('PA Media response structure:', Object.keys(paData))
+          console.log('PA Media sample data:', JSON.stringify(paData, null, 2).substring(0, 1000))
+          
+          // Check different possible response structures
+          const items = paData.items || paData.data || paData.articles || []
           
           // Transform PA Media articles to match our interface
-          const transformedArticles = paData.items?.map((item: any, index: number) => ({
+          const transformedArticles = items.map((item: any, index: number) => ({
             id: `pa-${item.id || Date.now()}-${index}`,
-            title: item.headline || item.title || 'Untitled',
-            summary: item.description || item.summary || '',
-            content: item.body_text || item.content || item.description || '',
-            image: item.renditions?.[0]?.href || item.image_url || '/placeholder.svg',
+            title: item.headline || item.title || item.name || 'Untitled',
+            summary: item.description || item.summary || item.snippet || '',
+            content: item.body_text || item.content || item.body || item.description || '',
+            image: item.renditions?.[0]?.href || item.image_url || item.image || '/placeholder.svg',
             source: 'PA Media',
             category: category,
-            publishedAt: item.published || item.created_date || new Date().toISOString(),
-            readTime: `${Math.ceil((item.body_text?.length || 500) / 200)} min read`
-          })) || []
+            publishedAt: item.published || item.created_date || item.date || new Date().toISOString(),
+            readTime: `${Math.ceil((item.body_text?.length || item.content?.length || 500) / 200)} min read`
+          }))
 
           console.log(`Successfully fetched ${transformedArticles.length} PA Media articles`)
 
           return new Response(
             JSON.stringify({ 
               articles: transformedArticles,
-              totalResults: paData.total || transformedArticles.length 
+              totalResults: paData.total || paData.count || transformedArticles.length 
             }),
             {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
