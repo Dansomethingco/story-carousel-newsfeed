@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { category = 'general', country = 'us', pageSize = 20 } = await req.json()
+    const { category = 'general', country = 'gb', pageSize = 20 } = await req.json()
     
     console.log('=== FETCH NEWS STARTED ===')
     console.log('Category:', category, 'Country:', country, 'PageSize:', pageSize)
@@ -124,7 +124,11 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
   
   if (useKeywords && searchQuery) {
     url.searchParams.set('q', searchQuery)
-    url.searchParams.set('domains', 'bbc.com,cnn.com,reuters.com,apnews.com,npr.org')
+    url.searchParams.set('domains', 'bbc.com,theguardian.com,sky.com,independent.co.uk,reuters.com,apnews.com')
+  } else if (category === 'sport' && country === 'gb') {
+    // For UK sports, prioritize UK sources and filter out US-heavy sports
+    url.searchParams.set('sources', 'bbc-sport,sky-sports-news,the-guardian-uk')
+    url.searchParams.set('q', '-NFL -NBA -MLB OR football OR tennis OR rugby OR cricket')
   } else {
     url.searchParams.set('country', country)
     if (newsApiCategory !== 'general') {
