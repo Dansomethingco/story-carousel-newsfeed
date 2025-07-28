@@ -21,6 +21,14 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const formSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -29,6 +37,19 @@ const formSchema = z.object({
     .number()
     .min(1920, 'Year must be between 1920 and 2010')
     .max(2010, 'Year must be between 1920 and 2010'),
+  preferredCategories: z.array(z.string()).min(1, 'Please select at least one category'),
+  otherCategory: z.string().optional(),
+  preferredCountries: z.array(z.string()).min(1, 'Please select at least one country'),
+  preferredMediaTypes: z.array(z.string()).min(1, 'Please select at least one media type'),
+  preferredNewsSources: z.array(z.string()).min(1, 'Please select at least one news source'),
+}).refine((data) => {
+  if (data.preferredCategories.includes('other') && !data.otherCategory?.trim()) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Please specify your other category interest',
+  path: ['otherCategory'],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -44,6 +65,11 @@ export function SignupPopup() {
       firstName: '',
       email: '',
       yearOfBirth: undefined,
+      preferredCategories: [],
+      otherCategory: '',
+      preferredCountries: [],
+      preferredMediaTypes: [],
+      preferredNewsSources: [],
     },
   });
 
@@ -74,6 +100,11 @@ export function SignupPopup() {
           first_name: data.firstName,
           email: data.email,
           year_of_birth: data.yearOfBirth,
+          preferred_categories: data.preferredCategories,
+          other_category: data.otherCategory || null,
+          preferred_countries: data.preferredCountries,
+          preferred_media_types: data.preferredMediaTypes,
+          preferred_news_sources: data.preferredNewsSources,
         });
 
       if (error) {
@@ -114,7 +145,7 @@ export function SignupPopup() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between text-lg font-medium">
             sign up for updates
@@ -182,6 +213,180 @@ export function SignupPopup() {
                         onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="preferredCategories"
+                render={() => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium lowercase">what do you like?</FormLabel>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['business', 'sport', 'politics', 'technology', 'entertainment', 'other'].map((category) => (
+                        <FormField
+                          key={category}
+                          control={form.control}
+                          name="preferredCategories"
+                          render={({ field }) => {
+                            return (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(category)}
+                                    onCheckedChange={(checked) => {
+                                      return checked
+                                        ? field.onChange([...field.value, category])
+                                        : field.onChange(field.value?.filter((value) => value !== category))
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-sm font-normal lowercase">
+                                  {category}
+                                </FormLabel>
+                              </FormItem>
+                            )
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('preferredCategories')?.includes('other') && (
+                <FormField
+                  control={form.control}
+                  name="otherCategory"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium lowercase">specify your other interest</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., health, science, travel" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={form.control}
+                name="preferredCountries"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium lowercase">where do you want to see news from?</FormLabel>
+                    <Select onValueChange={(value) => field.onChange([...field.value, value])}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="select countries" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {['United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan', 'India', 'Brazil', 'South Africa'].map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {field.value?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {field.value.map((country) => (
+                          <span key={country} className="inline-flex items-center px-2 py-1 rounded text-xs bg-secondary text-secondary-foreground">
+                            {country}
+                            <button
+                              type="button"
+                              onClick={() => field.onChange(field.value.filter(c => c !== country))}
+                              className="ml-1 text-xs hover:text-destructive"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="preferredMediaTypes"
+                render={() => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium lowercase">what media do you like consuming?</FormLabel>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['videos', 'infographics', 'articles', 'short articles'].map((mediaType) => (
+                        <FormField
+                          key={mediaType}
+                          control={form.control}
+                          name="preferredMediaTypes"
+                          render={({ field }) => {
+                            return (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(mediaType)}
+                                    onCheckedChange={(checked) => {
+                                      return checked
+                                        ? field.onChange([...field.value, mediaType])
+                                        : field.onChange(field.value?.filter((value) => value !== mediaType))
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-sm font-normal lowercase">
+                                  {mediaType}
+                                </FormLabel>
+                              </FormItem>
+                            )
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="preferredNewsSources"
+                render={() => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium lowercase">who do you want to hear news from?</FormLabel>
+                    <div className="grid grid-cols-1 gap-2">
+                      {['international publications', 'local news outlets', 'influencers', 'independent journalists'].map((source) => (
+                        <FormField
+                          key={source}
+                          control={form.control}
+                          name="preferredNewsSources"
+                          render={({ field }) => {
+                            return (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(source)}
+                                    onCheckedChange={(checked) => {
+                                      return checked
+                                        ? field.onChange([...field.value, source])
+                                        : field.onChange(field.value?.filter((value) => value !== source))
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-sm font-normal lowercase">
+                                  {source}
+                                </FormLabel>
+                              </FormItem>
+                            )
+                          }}
+                        />
+                      ))}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -20,6 +20,11 @@ export type Database = {
           email: string
           first_name: string
           id: string
+          other_category: string | null
+          preferred_categories: string[] | null
+          preferred_countries: string[] | null
+          preferred_media_types: string[] | null
+          preferred_news_sources: string[] | null
           updated_at: string
           year_of_birth: number
         }
@@ -28,6 +33,11 @@ export type Database = {
           email: string
           first_name: string
           id?: string
+          other_category?: string | null
+          preferred_categories?: string[] | null
+          preferred_countries?: string[] | null
+          preferred_media_types?: string[] | null
+          preferred_news_sources?: string[] | null
           updated_at?: string
           year_of_birth: number
         }
@@ -36,6 +46,11 @@ export type Database = {
           email?: string
           first_name?: string
           id?: string
+          other_category?: string | null
+          preferred_categories?: string[] | null
+          preferred_countries?: string[] | null
+          preferred_media_types?: string[] | null
+          preferred_news_sources?: string[] | null
           updated_at?: string
           year_of_birth?: number
         }
