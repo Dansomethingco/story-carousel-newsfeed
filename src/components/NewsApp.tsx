@@ -107,11 +107,10 @@ export const NewsApp = () => {
         
         // Call unified fetch-news endpoint
         const response = await supabase.functions.invoke('fetch-news', {
-          body: { 
-            category: category,
-            country: 'us',
-            pageSize: 20
-          }
+        body: { 
+          category: category,
+          pageSize: 20
+        }
         });
 
         if (response.error) {
