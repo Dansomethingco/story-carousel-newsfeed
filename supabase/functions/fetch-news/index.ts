@@ -126,9 +126,10 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
     url.searchParams.set('q', searchQuery)
     url.searchParams.set('domains', 'bbc.com,theguardian.com,sky.com,independent.co.uk,reuters.com,apnews.com')
   } else if (category === 'sport' && country === 'gb') {
-    // For UK sports, prioritize UK sources and filter out US-heavy sports
-    url.searchParams.set('sources', 'bbc-sport,sky-sports-news,the-guardian-uk')
-    url.searchParams.set('q', '-NFL -NBA -MLB OR football OR tennis OR rugby OR cricket')
+    // For UK sports, use country filter and add search query to filter out US sports
+    url.searchParams.set('country', country)
+    url.searchParams.set('category', newsApiCategory)
+    url.searchParams.set('q', '-NFL -NBA -MLB football OR tennis OR rugby OR cricket OR "Premier League" OR "Formula 1"')
   } else {
     url.searchParams.set('country', country)
     if (newsApiCategory !== 'general') {
