@@ -141,13 +141,25 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
 
   const response = await fetch(url.toString())
   
+  console.log('NewsAPI Response status:', response.status, response.statusText)
+  
   if (!response.ok) {
+    const errorText = await response.text()
+    console.error('NewsAPI request failed:', response.status, response.statusText, errorText)
     throw new Error(`NewsAPI request failed: ${response.status} ${response.statusText}`)
   }
 
   const data = await response.json()
   
+  console.log('NewsAPI Response data:', JSON.stringify({
+    status: data.status,
+    totalResults: data.totalResults,
+    articlesCount: data.articles?.length || 0,
+    message: data.message
+  }, null, 2))
+  
   if (data.status !== 'ok') {
+    console.error(`NewsAPI error: ${data.message}`)
     throw new Error(`NewsAPI error: ${data.message}`)
   }
 
