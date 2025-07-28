@@ -145,15 +145,18 @@ export function SignupPopup() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-accent/20 shadow-xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent via-accent/60 to-accent"></div>
+        <DialogHeader className="pt-2">
           <DialogTitle className="flex items-center justify-between text-lg font-medium">
-            sign up for updates
+            <span className="bg-gradient-to-r from-accent to-accent/80 bg-clip-text text-transparent">
+              sign up for updates ✨
+            </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleDismiss}
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-accent/10"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -296,12 +299,12 @@ export function SignupPopup() {
                     {field.value?.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {field.value.map((country) => (
-                          <span key={country} className="inline-flex items-center px-2 py-1 rounded text-xs bg-secondary text-secondary-foreground">
+                          <span key={country} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-accent/10 text-accent border border-accent/20">
                             {country}
                             <button
                               type="button"
                               onClick={() => field.onChange(field.value.filter(c => c !== country))}
-                              className="ml-1 text-xs hover:text-destructive"
+                              className="ml-1 text-xs hover:text-accent/70 transition-colors"
                             >
                               ×
                             </button>
@@ -396,7 +399,7 @@ export function SignupPopup() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="flex-1 px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-accent/25"
                 >
                   {isSubmitting ? 'signing up...' : 'sign up'}
                 </Button>
