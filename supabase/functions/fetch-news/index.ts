@@ -576,19 +576,12 @@ async function fetchYouTube(category: string, pageSize: number) {
       }
     }
     
-    // Filter for English channels if we have the channel whitelist
+    // Relaxed filtering - rely on search queries for English content
     const filteredVideos = allVideos.filter(video => {
-      const channelId = video.snippet.channelId
-      const channelTitle = video.snippet.channelTitle || ''
       const videoTitle = video.snippet.title || ''
       
-      // Post-processing English filter
-      const isEnglishChannel = englishNewsChannels.includes(channelId) ||
-                              /^[a-zA-Z0-9\s\-.,!?'"()&]+$/.test(channelTitle) // Basic English character check
-      
-      const hasEnglishTitle = /^[a-zA-Z0-9\s\-.,!?'"()&:]+$/.test(videoTitle) // Basic English title check
-      
-      return isEnglishChannel && hasEnglishTitle
+      // Basic content quality filter only
+      return videoTitle.length > 10 // Ensure video has a reasonable title
     })
     
     // Remove duplicates based on video ID and take only requested amount
