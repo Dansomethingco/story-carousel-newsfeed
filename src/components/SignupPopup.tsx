@@ -302,7 +302,12 @@ export function SignupPopup() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium lowercase">where do you want to see news from?</FormLabel>
-                    <Select onValueChange={(value) => field.onChange([...(field.value || []), value])}>
+                    <Select onValueChange={(value) => {
+                      const currentValues = field.value || [];
+                      if (!currentValues.includes(value)) {
+                        field.onChange([...currentValues, value]);
+                      }
+                    }}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="select countries" />
