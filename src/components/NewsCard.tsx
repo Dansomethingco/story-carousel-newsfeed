@@ -1,6 +1,7 @@
 
 import { Badge } from "@/components/ui/badge";
-import { Clock, Play } from "lucide-react";
+import { Clock, Play, X } from "lucide-react";
+import { useState } from "react";
 
 interface NewsArticle {
   id: string;
@@ -23,6 +24,8 @@ interface NewsCardProps {
 }
 
 export const NewsCard = ({ article }: NewsCardProps) => {
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
   const formatTime = (timeString: string) => {
     return new Date(timeString).toLocaleTimeString('en-GB', { 
       hour: '2-digit', 
@@ -34,9 +37,13 @@ export const NewsCard = ({ article }: NewsCardProps) => {
   };
 
   const handleVideoClick = () => {
-    if (article.isVideo && article.videoId) {
-      window.open(`https://www.youtube.com/watch?v=${article.videoId}`, '_blank');
+    if (article.isVideo && article.embedUrl) {
+      setIsVideoPlaying(true);
     }
+  };
+
+  const handleCloseVideo = () => {
+    setIsVideoPlaying(false);
   };
 
   return (
@@ -69,19 +76,40 @@ export const NewsCard = ({ article }: NewsCardProps) => {
           </div>
         </div>
 
-        {/* Article Image or Video Thumbnail */}
-        <div className="mb-6 rounded-lg overflow-hidden bg-muted relative cursor-pointer" onClick={handleVideoClick}>
-          <img 
-            src={article.videoThumbnail || article.image} 
-            alt={article.title}
-            className="w-full h-48 md:h-64 object-cover"
-            loading="lazy"
-          />
-          {article.isVideo && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
-              <div className="bg-red-600 hover:bg-red-700 rounded-full p-4 transition-colors">
-                <Play className="w-8 h-8 text-white fill-white" />
-              </div>
+        {/* Article Image or Video Player */}
+        <div className="mb-6 rounded-lg overflow-hidden bg-muted relative">
+          {isVideoPlaying && article.isVideo && article.embedUrl ? (
+            <div className="relative">
+              <iframe
+                src={article.embedUrl}
+                title={article.title}
+                className="w-full h-48 md:h-64 aspect-video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+              <button
+                onClick={handleCloseVideo}
+                className="absolute top-2 right-2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-colors"
+                aria-label="Close video"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="cursor-pointer" onClick={handleVideoClick}>
+              <img 
+                src={article.videoThumbnail || article.image} 
+                alt={article.title}
+                className="w-full h-48 md:h-64 object-cover"
+                loading="lazy"
+              />
+              {article.isVideo && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
+                  <div className="bg-red-600 hover:bg-red-700 rounded-full p-4 transition-colors">
+                    <Play className="w-8 h-8 text-white fill-white" />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
