@@ -432,7 +432,6 @@ async function fetchMediastack(category: string, pageSize: number) {
     
     const url = new URL('https://api.mediastack.com/v1/news')
     url.searchParams.set('access_key', apiKey)
-    url.searchParams.set('countries', 'gb') // UK news sources only
     url.searchParams.set('languages', 'en')
     url.searchParams.set('limit', pageSize.toString())
     url.searchParams.set('sort', 'published_desc')
