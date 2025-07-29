@@ -89,6 +89,75 @@ Deno.serve(async (req) => {
   }
 })
 
+// Web scraping function to get full article content
+async function scrapeArticleContent(url: string): Promise<string> {
+  try {
+    console.log('Scraping article content from:', url)
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    })
+    
+    if (!response.ok) {
+      console.log(`Failed to fetch article: ${response.status}`)
+      return ''
+    }
+    
+    const html = await response.text()
+    
+    // Simple content extraction - look for common article containers
+    const articlePatterns = [
+      /<article[^>]*>([\s\S]*?)<\/article>/i,
+      /<div[^>]*class="[^"]*article[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*class="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*class="[^"]*story[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<main[^>]*>([\s\S]*?)<\/main>/i
+    ]
+    
+    let content = ''
+    for (const pattern of articlePatterns) {
+      const match = html.match(pattern)
+      if (match && match[1]) {
+        content = match[1]
+        break
+      }
+    }
+    
+    if (!content) {
+      // Fallback: extract from body
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+      content = bodyMatch ? bodyMatch[1] : html
+    }
+    
+    // Clean up HTML tags and extract text
+    content = content
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+      .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+      .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+      .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '')
+      .replace(/<div[^>]*class="[^"]*ad[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    
+    // Extract meaningful paragraphs (longer than 50 characters)
+    const paragraphs = content.split(/[.!?]+\s+/)
+      .filter(p => p.trim().length > 50)
+      .slice(0, 10) // Take first 10 meaningful paragraphs
+    
+    const extractedContent = paragraphs.join('. ').trim()
+    console.log(`Extracted ${extractedContent.length} characters from article`)
+    
+    return extractedContent || ''
+  } catch (error) {
+    console.error('Error scraping article:', error)
+    return ''
+  }
+}
+
 async function fetchNewsAPI(category: string, country: string, pageSize: number) {
   const apiKey = Deno.env.get('NEWSAPI_KEY')
   if (!apiKey) {
@@ -146,17 +215,37 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
     throw new Error(`NewsAPI error: ${data.message}`)
   }
 
-  return data.articles.map((article: any, index: number) => ({
-    id: `news-${Date.now()}-${index}`,
-    title: article.title || 'Untitled',
-    summary: article.description || '',
-    content: article.content || article.description || '',
-    image: article.urlToImage || `https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=800&h=400&fit=crop`,
-    source: article.source?.name || 'Unknown Source',
-    category: category,
-    publishedAt: article.publishedAt || new Date().toISOString(),
-    readTime: `${Math.ceil((article.content?.length || 500) / 200)} min read`
-  }))
+  // Process articles and scrape full content
+  const articles = await Promise.all(
+    data.articles.map(async (article: any, index: number) => {
+      let fullContent = article.content || article.description || ''
+      
+      // If content is truncated (contains [+X chars] or [removed]), scrape full content
+      if (fullContent.includes('[+') || fullContent.includes('[removed]') || fullContent.length < 200) {
+        if (article.url) {
+          const scrapedContent = await scrapeArticleContent(article.url)
+          if (scrapedContent && scrapedContent.length > fullContent.length) {
+            fullContent = scrapedContent
+            console.log(`Enhanced NewsAPI article ${index + 1} with scraped content`)
+          }
+        }
+      }
+      
+      return {
+        id: `news-${Date.now()}-${index}`,
+        title: article.title || 'Untitled',
+        summary: article.description || '',
+        content: fullContent,
+        image: article.urlToImage || `https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=800&h=400&fit=crop`,
+        source: article.source?.name || 'Unknown Source',
+        category: category,
+        publishedAt: article.publishedAt || new Date().toISOString(),
+        readTime: `${Math.ceil((fullContent?.length || 500) / 200)} min read`
+      }
+    })
+  )
+  
+  return articles
 }
 
 async function fetchPAMedia(category: string, pageSize: number) {
