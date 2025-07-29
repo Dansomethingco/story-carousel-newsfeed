@@ -513,12 +513,12 @@ async function fetchYouTube(category: string, pageSize: number) {
 
   // Map categories to search queries as specified by user
   const searchQueries: { [key: string]: string } = {
-    'all': 'breaking news latest news today',
-    'sport': 'sports news football rugby cricket f1',
-    'business': 'breaking finance business news',
-    'politics': 'politics news government election trump starmer',
-    'technology': 'breaking news technology science space',
-    'entertainment': 'breaking music entertainment movie news'
+    'all': 'breaking news latest news today uk us english',
+    'sport': 'sports news football rugby cricket f1 uk us english',
+    'business': 'breaking finance business news uk us english',
+    'politics': 'politics news government election trump starmer uk us english',
+    'technology': 'breaking news technology science space uk us english',
+    'entertainment': 'breaking music entertainment movie news uk us english'
   }
 
   const searchQuery = searchQueries[category] || searchQueries['all']
