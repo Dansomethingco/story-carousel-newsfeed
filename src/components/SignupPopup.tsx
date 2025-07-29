@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X } from 'lucide-react';
+import { X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -57,6 +57,7 @@ type FormData = z.infer<typeof formSchema>;
 export function SignupPopup() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -143,33 +144,38 @@ export function SignupPopup() {
     setIsOpen(false);
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-accent/20 shadow-xl">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent via-accent/60 to-accent"></div>
-        <DialogHeader className="pt-2">
-          <DialogTitle className="flex items-center justify-between text-lg font-medium">
-            <span className="bg-gradient-to-r from-accent to-accent/80 bg-clip-text text-transparent">
-              sign up for updates ✨
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDismiss}
-              className="h-6 w-6 p-0 hover:bg-accent/10"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground lowercase">
-            get the latest feature upgrades and exclusive discounts delivered straight to your inbox.
-          </p>
+  const nextStep = async () => {
+    let fieldsToValidate: (keyof FormData)[] = [];
+    
+    if (currentStep === 1) {
+      fieldsToValidate = ['firstName', 'email', 'yearOfBirth'];
+    } else if (currentStep === 2) {
+      fieldsToValidate = ['preferredCategories', 'preferredCountries'];
+    }
+    
+    const isValid = await form.trigger(fieldsToValidate);
+    if (isValid) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+  const prevStep = () => {
+    setCurrentStep(currentStep - 1);
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-medium">let's get started</h3>
+              <p className="text-sm text-muted-foreground">tell us a bit about yourself</p>
+            </div>
+            
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent"></div>
+            
+            <div className="space-y-4">
               <FormField
                 control={form.control}
                 name="firstName"
@@ -220,7 +226,21 @@ export function SignupPopup() {
                   </FormItem>
                 )}
               />
+            </div>
+          </div>
+        );
 
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-medium">your preferences</h3>
+              <p className="text-sm text-muted-foreground">what interests you most?</p>
+            </div>
+            
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent"></div>
+            
+            <div className="space-y-6">
               <FormField
                 control={form.control}
                 name="preferredCategories"
@@ -316,7 +336,21 @@ export function SignupPopup() {
                   </FormItem>
                 )}
               />
+            </div>
+          </div>
+        );
 
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-medium">almost done</h3>
+              <p className="text-sm text-muted-foreground">how do you prefer to consume news?</p>
+            </div>
+            
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent"></div>
+            
+            <div className="space-y-6">
               <FormField
                 control={form.control}
                 name="preferredMediaTypes"
@@ -394,28 +428,93 @@ export function SignupPopup() {
                   </FormItem>
                 )}
               />
+            </div>
+          </div>
+        );
 
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-accent/25"
-                >
-                  {isSubmitting ? 'signing up...' : 'sign up'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleDismiss}
-                  className="flex-1 px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-secondary hover:bg-secondary/80 text-secondary-foreground"
-                >
-                  maybe later
-                </Button>
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-md w-[90vw] border-accent/20 shadow-xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent via-accent/60 to-accent"></div>
+        
+        <DialogHeader className="pt-2">
+          <DialogTitle className="flex items-center justify-between text-lg font-medium">
+            <span className="bg-gradient-to-r from-accent to-accent/80 bg-clip-text text-transparent">
+              sign up for updates ✨
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDismiss}
+              className="h-6 w-6 p-0 hover:bg-accent/10"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Progress indicators */}
+          <div className="flex items-center justify-center space-x-2">
+            {[1, 2, 3].map((step) => (
+              <div
+                key={step}
+                className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                  step <= currentStep ? 'bg-accent' : 'bg-accent/20'
+                }`}
+              />
+            ))}
+          </div>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {renderStep()}
+
+              {/* Navigation */}
+              <div className="flex items-center justify-between pt-4">
+                {currentStep > 1 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={prevStep}
+                    className="flex items-center gap-2 text-sm hover:bg-accent/10"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    back
+                  </Button>
+                ) : (
+                  <div />
+                )}
+
+                {currentStep < 3 ? (
+                  <Button
+                    type="button"
+                    onClick={nextStep}
+                    className="flex items-center gap-2 px-6 py-2 rounded-full text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-accent/25 transition-all duration-200"
+                  >
+                    continue
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 px-6 py-2 rounded-full text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-accent/25 transition-all duration-200"
+                  >
+                    {isSubmitting ? 'signing up...' : 'complete signup'}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </form>
           </Form>
 
-          <p className="text-xs text-muted-foreground lowercase">
+          <p className="text-xs text-muted-foreground lowercase text-center">
             we respect your privacy. you can unsubscribe at any time.
           </p>
         </div>
