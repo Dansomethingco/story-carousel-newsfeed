@@ -511,88 +511,60 @@ async function fetchYouTube(category: string, pageSize: number) {
     return []
   }
 
-  // Enhanced search queries with English-speaking regions (UK, US, Australia)
+  // Map categories to search queries as specified by user
   const searchQueries: { [key: string]: string } = {
-    'all': 'breaking news latest news today UK US Australia english',
-    'sport': 'sports news football rugby cricket f1 UK US Australia premier league NFL NBA',
-    'business': 'breaking finance business news UK US Australia stock market economy',
-    'politics': 'politics news government election trump starmer UK US Australia parliament',
-    'technology': 'breaking news technology science space UK US Australia tech',
-    'entertainment': 'breaking music entertainment movie news UK US Australia hollywood'
+    'all': 'breaking news latest news today',
+    'sport': 'sports news football rugby cricket f1',
+    'business': 'breaking finance business news',
+    'politics': 'politics news government election trump starmer',
+    'technology': 'breaking news technology science space',
+    'entertainment': 'breaking music entertainment movie news'
   }
-
-  // Expanded English-speaking news channels (UK, US, Australia)
-  const englishNewsChannels = [
-    // US Channels
-    'UCupvZG-5ko_eiXAupbDfxWw', // CNN
-    'UChi4LTh6KRGkQYJRFDnpN9w', // NBC News
-    'UCqnbDFdCpuN8CMEg0VuEBqA', // ABC News
-    'UC46nQZ2DpT0_hK4aJ-rw_1g', // CBS News
-    'UCv3Q_4dFkM0ws_blwajstJQ', // Fox News
-    // UK Channels
-    'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
-    'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
-    'UCOReNCLa8e8ZhTwGRyw_h3Q', // ITV News
-    'UC2Kpn46t2_mNlBD5khBDLdQ', // Channel 4 News
-    // Australia Channels
-    'UCVgO39Bk5_p_RJkuOHriQAg', // ABC News Australia
-    'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News Australia
-    'UCBcRw-dJvdMDDamZKjJJx7A', // 7NEWS Australia
-    // International
-    'UCR-_HpHfVLKkMCPQg9lMLZA', // Reuters
-  ]
 
   const searchQuery = searchQueries[category] || searchQueries['all']
   
   try {
     console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
     
-    // Multi-region search strategy - try different region codes for better English coverage
-    const regions = ['US', 'GB', 'AU']
-    let allVideos: any[] = []
+    const url = new URL('https://www.googleapis.com/youtube/v3/search')
+    url.searchParams.set('key', apiKey)
+    url.searchParams.set('part', 'snippet')
+    url.searchParams.set('q', searchQuery)
+    url.searchParams.set('type', 'video')
+    url.searchParams.set('order', 'date')
+    url.searchParams.set('maxResults', pageSize.toString())
+    url.searchParams.set('publishedAfter', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()) // Last 48 hours
+    url.searchParams.set('relevanceLanguage', 'en')
+    url.searchParams.set('regionCode', 'US')
     
-    for (const region of regions) {
-      const url = new URL('https://www.googleapis.com/youtube/v3/search')
-      url.searchParams.set('key', apiKey)
-      url.searchParams.set('part', 'snippet')
-      url.searchParams.set('q', searchQuery)
-      url.searchParams.set('type', 'video')
-      url.searchParams.set('order', 'date')
-      url.searchParams.set('maxResults', Math.ceil(pageSize / regions.length).toString())
-      url.searchParams.set('publishedAfter', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
-      url.searchParams.set('relevanceLanguage', 'en')
-      url.searchParams.set('regionCode', region)
-      url.searchParams.set('safeSearch', 'moderate')
-      
-      console.log(`YouTube URL for ${region}:`, url.toString().replace(apiKey, '[REDACTED]'))
+    // Target major news channels for better quality
+    const newsChannels = [
+      'UCupvZG-5ko_eiXAupbDfxWw', // CNN
+      'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
+      'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
+      'UCR-_HpHfVLKkMCPQg9lMLZA', // Reuters
+      'UChi4LTh6KRGkQYJRFDnpN9w', // NBC News
+      'UCqnbDFdCpuN8CMEg0VuEBqA', // ABC News
+    ]
+    
+    console.log('YouTube URL:', url.toString().replace(apiKey, '[REDACTED]'))
 
-      const response = await fetch(url.toString())
-      
-      if (response.ok) {
-        const data = await response.json()
-        if (!data.error && data.items) {
-          allVideos.push(...data.items)
-        }
-      }
+    const response = await fetch(url.toString())
+    
+    if (!response.ok) {
+      throw new Error(`YouTube API request failed: ${response.status} ${response.statusText}`)
     }
+
+    const data = await response.json()
     
-    // Relaxed filtering - rely on search queries for English content
-    const filteredVideos = allVideos.filter(video => {
-      const videoTitle = video.snippet.title || ''
-      
-      // Basic content quality filter only
-      return videoTitle.length > 10 // Ensure video has a reasonable title
-    })
+    if (data.error) {
+      throw new Error(`YouTube API error: ${data.error.message}`)
+    }
+
+    const videos = data.items || []
     
-    // Remove duplicates based on video ID and take only requested amount
-    const uniqueVideos = filteredVideos
-      .filter((video, index, self) => 
-        index === self.findIndex(v => v.id.videoId === video.id.videoId)
-      )
-      .slice(0, pageSize)
-    
-    // Get additional video details including duration for filtered videos
-    const videoIds = uniqueVideos.map((video: any) => video.id.videoId).join(',')
+    // Get additional video details including duration
+    const videoIds = videos.map((video: any) => video.id.videoId).join(',')
     
     if (videoIds) {
       const detailsUrl = new URL('https://www.googleapis.com/youtube/v3/videos')
@@ -604,7 +576,7 @@ async function fetchYouTube(category: string, pageSize: number) {
       const detailsData = await detailsResponse.json()
       const videoDetails = detailsData.items || []
       
-      return uniqueVideos.map((video: any, index: number) => {
+      return videos.map((video: any, index: number) => {
         const details = videoDetails.find((d: any) => d.id === video.id.videoId)
         const duration = details ? parseDuration(details.contentDetails.duration) : 'N/A'
         
