@@ -12,15 +12,17 @@ Deno.serve(async (req) => {
     console.log('=== FETCH NEWS STARTED ===')
     console.log('Category:', category, 'Country:', country, 'PageSize:', pageSize)
     
-    // Fetch from both NewsAPI and PA Media in parallel
-    console.log('Starting parallel fetch from NewsAPI and PA Media...')
-    const [newsApiData, paMediaData] = await Promise.allSettled([
-      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.75)), // 75% from NewsAPI
-      fetchPAMedia(category, Math.ceil(pageSize * 0.25)) // 25% from PA Media
+    // Fetch from NewsAPI, PA Media, and Mediastack in parallel
+    console.log('Starting parallel fetch from NewsAPI, PA Media, and Mediastack...')
+    const [newsApiData, paMediaData, mediastackData] = await Promise.allSettled([
+      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.5)), // 50% from NewsAPI
+      fetchPAMedia(category, Math.ceil(pageSize * 0.25)), // 25% from PA Media
+      fetchMediastack(category, Math.ceil(pageSize * 0.25)) // 25% from Mediastack
     ])
     
     let newsApiArticles: any[] = []
     let paMediaArticles: any[] = []
+    let mediastackArticles: any[] = []
     
     // Process NewsAPI results
     if (newsApiData.status === 'fulfilled') {
@@ -38,16 +40,29 @@ Deno.serve(async (req) => {
       console.error('PA Media failed:', paMediaData.reason)
     }
     
-    // Intertwine articles - PA Media every 4th position
+    // Process Mediastack results
+    if (mediastackData.status === 'fulfilled') {
+      mediastackArticles = mediastackData.value || []
+      console.log(`Successfully fetched ${mediastackArticles.length} Mediastack articles`)
+    } else {
+      console.error('Mediastack failed:', mediastackData.reason)
+    }
+    
+    // Intertwine articles - mix all three sources
     const interweavedArticles: any[] = []
     let newsIndex = 0
     let paIndex = 0
+    let mediastackIndex = 0
     
-    for (let i = 0; i < pageSize && (newsIndex < newsApiArticles.length || paIndex < paMediaArticles.length); i++) {
+    for (let i = 0; i < pageSize && (newsIndex < newsApiArticles.length || paIndex < paMediaArticles.length || mediastackIndex < mediastackArticles.length); i++) {
       if ((i + 1) % 4 === 0 && paIndex < paMediaArticles.length) {
         // Every 4th article is from PA Media
         interweavedArticles.push(paMediaArticles[paIndex])
         paIndex++
+      } else if ((i + 1) % 6 === 0 && mediastackIndex < mediastackArticles.length) {
+        // Every 6th article is from Mediastack
+        interweavedArticles.push(mediastackArticles[mediastackIndex])
+        mediastackIndex++
       } else if (newsIndex < newsApiArticles.length) {
         // Other articles from NewsAPI
         interweavedArticles.push(newsApiArticles[newsIndex])
@@ -56,6 +71,10 @@ Deno.serve(async (req) => {
         // If NewsAPI is exhausted, fill with PA Media
         interweavedArticles.push(paMediaArticles[paIndex])
         paIndex++
+      } else if (mediastackIndex < mediastackArticles.length) {
+        // If others are exhausted, fill with Mediastack
+        interweavedArticles.push(mediastackArticles[mediastackIndex])
+        mediastackIndex++
       }
     }
     
@@ -64,7 +83,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         articles: interweavedArticles,
-        totalResults: newsApiArticles.length + paMediaArticles.length
+        totalResults: newsApiArticles.length + paMediaArticles.length + mediastackArticles.length
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -388,4 +407,79 @@ async function fetchPAMedia(category: string, pageSize: number) {
   console.warn('All PA Media API keys failed, continuing without PA Media articles')
   return []
 
+}
+
+async function fetchMediastack(category: string, pageSize: number) {
+  const apiKey = Deno.env.get('MEDIASTACK_ACCESS_KEY')
+  if (!apiKey) {
+    console.log('Mediastack API key not configured, skipping Mediastack articles')
+    return []
+  }
+
+  // Map frontend categories to Mediastack categories
+  const categoryMapping: { [key: string]: string } = {
+    'all': 'general',
+    'business': 'business',
+    'sport': 'sports',
+    'politics': 'politics',
+    'technology': 'technology',
+    'entertainment': 'entertainment'
+  }
+
+  const mediastackCategory = categoryMapping[category] || 'general'
+  
+  try {
+    console.log(`Fetching Mediastack articles for category: ${category}`)
+    
+    const url = new URL('https://api.mediastack.com/v1/news')
+    url.searchParams.set('access_key', apiKey)
+    url.searchParams.set('countries', 'gb') // UK news sources only
+    url.searchParams.set('languages', 'en')
+    url.searchParams.set('limit', pageSize.toString())
+    url.searchParams.set('sort', 'published_desc')
+    
+    if (mediastackCategory !== 'general') {
+      url.searchParams.set('categories', mediastackCategory)
+    }
+    
+    console.log('Mediastack URL:', url.toString().replace(apiKey, '[REDACTED]'))
+
+    const response = await fetch(url.toString())
+    
+    if (!response.ok) {
+      throw new Error(`Mediastack request failed: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    
+    if (data.error) {
+      throw new Error(`Mediastack error: ${data.error.message}`)
+    }
+
+    const articles = data.data || []
+    
+    return articles.map((article: any, index: number) => {
+      // Map Mediastack categories back to our frontend categories
+      let mappedCategory = category;
+      if (mediastackCategory === 'sports') {
+        mappedCategory = 'sport';
+      }
+      
+      return {
+        id: `mediastack-${category}-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
+        title: article.title || 'Untitled',
+        summary: article.description || '',
+        content: article.description || '', // Mediastack only provides descriptions, not full content
+        image: article.image || `https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=800&h=400&fit=crop`,
+        source: article.source || 'Mediastack',
+        category: mappedCategory,
+        publishedAt: article.published_at || new Date().toISOString(),
+        readTime: `${Math.ceil((article.description?.length || 500) / 200)} min read`
+      }
+    })
+    
+  } catch (error) {
+    console.error('Error fetching Mediastack articles:', error)
+    return []
+  }
 }
