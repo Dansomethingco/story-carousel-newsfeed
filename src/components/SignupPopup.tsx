@@ -151,7 +151,7 @@ export function SignupPopup() {
         <DialogHeader className="pt-6 pb-2 relative z-10">
           <DialogTitle className="flex items-center justify-between text-xl font-semibold">
             <span className="bg-gradient-to-r from-blue-accent via-accent to-blue-accent bg-clip-text text-transparent">
-              Join Our Community ✨
+              Join Our Community
             </span>
             <Button
               variant="ghost"
