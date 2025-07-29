@@ -149,18 +149,10 @@ export function SignupPopup() {
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-accent via-accent to-blue-accent rounded-t-2xl"></div>
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-transparent via-transparent to-blue-accent/3 rounded-2xl pointer-events-none"></div>
         <DialogHeader className="pt-6 pb-2 relative z-10">
-          <DialogTitle className="flex items-center justify-between text-xl font-semibold">
+          <DialogTitle className="text-xl font-semibold">
             <span className="bg-gradient-to-r from-blue-accent via-accent to-blue-accent bg-clip-text text-transparent">
               Join Our Community
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDismiss}
-              className="h-8 w-8 p-0 hover:bg-blue-accent/10 rounded-full transition-all duration-200 hover:scale-110"
-            >
-              <X className="h-4 w-4 text-muted-foreground hover:text-blue-accent" />
-            </Button>
           </DialogTitle>
         </DialogHeader>
         
