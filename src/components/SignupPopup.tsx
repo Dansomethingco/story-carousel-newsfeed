@@ -42,6 +42,7 @@ const formSchema = z.object({
   preferredCountries: z.array(z.string()).min(1, 'Please select at least one country'),
   preferredMediaTypes: z.array(z.string()).min(1, 'Please select at least one media type'),
   preferredNewsSources: z.array(z.string()).min(1, 'Please select at least one news source'),
+  doNotContactForPromotions: z.boolean().optional(),
 }).refine((data) => {
   if (data.preferredCategories.includes('other') && !data.otherCategory?.trim()) {
     return false;
@@ -70,6 +71,7 @@ export function SignupPopup() {
       preferredCountries: [],
       preferredMediaTypes: [],
       preferredNewsSources: [],
+      doNotContactForPromotions: false,
     },
   });
 
@@ -105,6 +107,7 @@ export function SignupPopup() {
           preferred_countries: data.preferredCountries,
           preferred_media_types: data.preferredMediaTypes,
           preferred_news_sources: data.preferredNewsSources,
+          do_not_contact_for_promotions: data.doNotContactForPromotions || false,
         });
 
       if (error) {
@@ -402,6 +405,27 @@ export function SignupPopup() {
                       ))}
                     </div>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="doNotContactForPromotions"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-4 rounded-lg border-2 border-muted bg-background/30 backdrop-blur-sm">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        className="border-2 border-blue-accent data-[state=checked]:bg-blue-accent data-[state=checked]:border-blue-accent"
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm font-normal text-muted-foreground cursor-pointer">
+                        Do not contact me via email for any promotions
+                      </FormLabel>
+                    </div>
                   </FormItem>
                 )}
               />

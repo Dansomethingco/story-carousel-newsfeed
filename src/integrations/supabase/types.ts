@@ -17,6 +17,7 @@ export type Database = {
       visitor_signups: {
         Row: {
           created_at: string
+          do_not_contact_for_promotions: boolean
           email: string
           first_name: string
           id: string
@@ -30,6 +31,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          do_not_contact_for_promotions?: boolean
           email: string
           first_name: string
           id?: string
@@ -43,6 +45,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          do_not_contact_for_promotions?: boolean
           email?: string
           first_name?: string
           id?: string
