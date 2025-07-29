@@ -302,41 +302,48 @@ export function SignupPopup() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium lowercase">where do you want to see news from?</FormLabel>
-                    <Select onValueChange={(value) => {
-                      const currentValues = field.value || [];
-                      if (!currentValues.includes(value)) {
-                        field.onChange([...currentValues, value]);
-                      }
-                    }}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="select countries" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {['United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan', 'India', 'Brazil', 'South Africa'].map((country) => (
-                          <SelectItem key={country} value={country}>
-                            {country}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.value?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {field.value.map((country) => (
-                          <span key={country} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-accent/10 text-accent border border-accent/20">
-                            {country}
-                            <button
-                              type="button"
-                              onClick={() => field.onChange(field.value.filter(c => c !== country))}
-                              className="ml-1 text-xs hover:text-accent/70 transition-colors"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      <Select 
+                        onValueChange={(value) => {
+                          const currentValues = field.value || [];
+                          if (!currentValues.includes(value)) {
+                            field.onChange([...currentValues, value]);
+                          }
+                        }}
+                        value=""
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="select countries" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {['United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan', 'India', 'Brazil', 'South Africa']
+                            .filter(country => !(field.value || []).includes(country))
+                            .map((country) => (
+                              <SelectItem key={country} value={country}>
+                                {country}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {(field.value?.length || 0) > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {field.value?.map((country) => (
+                            <span key={country} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-accent/10 text-accent border border-accent/20">
+                              {country}
+                              <button
+                                type="button"
+                                onClick={() => field.onChange((field.value || []).filter(c => c !== country))}
+                                className="ml-1 text-xs hover:text-accent/70 transition-colors"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          )) || []}
+                        </div>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
