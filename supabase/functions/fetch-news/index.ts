@@ -16,8 +16,8 @@ Deno.serve(async (req) => {
     console.log('Starting parallel fetch from NewsAPI, PA Media, and Mediastack...')
     const [newsApiData, paMediaData, mediastackData] = await Promise.allSettled([
       fetchNewsAPI(category, country, Math.ceil(pageSize * 0.5)), // 50% from NewsAPI
-      fetchPAMedia(category, Math.ceil(pageSize * 0.25)), // 25% from PA Media
-      fetchMediastack(category, Math.ceil(pageSize * 0.25)) // 25% from Mediastack
+      fetchPAMedia(category, Math.ceil(pageSize * 0.2)), // 20% from PA Media
+      fetchMediastack(category, Math.ceil(pageSize * 0.3)) // 30% from Mediastack
     ])
     
     let newsApiArticles: any[] = []
@@ -421,7 +421,6 @@ async function fetchMediastack(category: string, pageSize: number) {
     'all': 'general',
     'business': 'business',
     'sport': 'sports',
-    'politics': 'politics',
     'technology': 'technology',
     'entertainment': 'entertainment'
   }
