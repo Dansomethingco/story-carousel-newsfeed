@@ -23,6 +23,10 @@ interface NewsArticle {
   category: string;
   publishedAt: string;
   readTime: string;
+  isVideo?: boolean;
+  videoId?: string;
+  embedUrl?: string;
+  videoThumbnail?: string;
 }
 
 // Mock data - in a real app this would come from an API
@@ -36,7 +40,8 @@ const mockArticles: NewsArticle[] = [
     source: "Sky Sports",
     category: "sport",
     publishedAt: "2025-07-10T13:00:00Z",
-    readTime: "3 min read"
+    readTime: "3 min read",
+    isVideo: false
   },
   {
     id: "2",
@@ -47,7 +52,8 @@ const mockArticles: NewsArticle[] = [
     source: "BBC Sport",
     category: "sport",
     publishedAt: "2025-07-10T08:00:00Z",
-    readTime: "4 min read"
+    readTime: "4 min read",
+    isVideo: false
   },
   {
     id: "3",
@@ -58,7 +64,8 @@ const mockArticles: NewsArticle[] = [
     source: "Government News",
     category: "politics",
     publishedAt: "2025-07-10T10:30:00Z",
-    readTime: "5 min read"
+    readTime: "5 min read",
+    isVideo: false
   },
   {
     id: "4",
@@ -69,7 +76,8 @@ const mockArticles: NewsArticle[] = [
     source: "Tech News Daily",
     category: "technology",
     publishedAt: "2025-07-10T12:00:00Z",
-    readTime: "6 min read"
+    readTime: "6 min read",
+    isVideo: false
   }
 ];
 
@@ -98,7 +106,7 @@ export const NewsApp = () => {
     }
   }, [isNative]);
 
-  // Fetch news from unified endpoint that combines both sources
+  // Fetch news from unified endpoint that combines all sources including YouTube
   const fetchNews = async () => {
       try {
         setLoading(true);
@@ -122,7 +130,7 @@ export const NewsApp = () => {
         
         if (data.articles && data.articles.length > 0) {
           setArticles(data.articles);
-          console.log(`Successfully loaded ${data.articles.length} articles (mixed sources)`);
+          console.log(`Successfully loaded ${data.articles.length} articles (mixed sources including YouTube)`);
         } else {
           // Fallback to mock data if no articles received
           console.warn('No articles received from API, using mock data');

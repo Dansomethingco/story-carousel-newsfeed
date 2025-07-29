@@ -1,5 +1,6 @@
+
 import { Badge } from "@/components/ui/badge";
-import { Clock } from "lucide-react";
+import { Clock, Play } from "lucide-react";
 
 interface NewsArticle {
   id: string;
@@ -11,6 +12,10 @@ interface NewsArticle {
   category: string;
   publishedAt: string;
   readTime: string;
+  isVideo?: boolean;
+  videoId?: string;
+  embedUrl?: string;
+  videoThumbnail?: string;
 }
 
 interface NewsCardProps {
@@ -28,6 +33,12 @@ export const NewsCard = ({ article }: NewsCardProps) => {
     });
   };
 
+  const handleVideoClick = () => {
+    if (article.isVideo && article.videoId) {
+      window.open(`https://www.youtube.com/watch?v=${article.videoId}`, '_blank');
+    }
+  };
+
   return (
     <div className="w-full h-full flex flex-col bg-background p-6 snap-start">
       {/* Main Content */}
@@ -43,6 +54,11 @@ export const NewsCard = ({ article }: NewsCardProps) => {
             <span className="text-accent font-semibold text-sm bg-accent/10 px-3 py-1 rounded-full">
               {article.source}
             </span>
+            {article.isVideo && (
+              <Badge variant="secondary" className="bg-red-100 text-red-800">
+                Video
+              </Badge>
+            )}
             <span className="text-muted-foreground text-sm">
               {formatTime(article.publishedAt)}
             </span>
@@ -53,14 +69,21 @@ export const NewsCard = ({ article }: NewsCardProps) => {
           </div>
         </div>
 
-        {/* Article Image */}
-        <div className="mb-6 rounded-lg overflow-hidden bg-muted">
+        {/* Article Image or Video Thumbnail */}
+        <div className="mb-6 rounded-lg overflow-hidden bg-muted relative cursor-pointer" onClick={handleVideoClick}>
           <img 
-            src={article.image} 
+            src={article.videoThumbnail || article.image} 
             alt={article.title}
             className="w-full h-48 md:h-64 object-cover"
             loading="lazy"
           />
+          {article.isVideo && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
+              <div className="bg-red-600 hover:bg-red-700 rounded-full p-4 transition-colors">
+                <Play className="w-8 h-8 text-white fill-white" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary */}

@@ -13,6 +13,10 @@ interface NewsArticle {
   category: string;
   publishedAt: string;
   readTime: string;
+  isVideo?: boolean;
+  videoId?: string;
+  embedUrl?: string;
+  videoThumbnail?: string;
 }
 
 interface NewsCarouselProps {

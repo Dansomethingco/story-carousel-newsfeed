@@ -12,17 +12,19 @@ Deno.serve(async (req) => {
     console.log('=== FETCH NEWS STARTED ===')
     console.log('Category:', category, 'Country:', country, 'PageSize:', pageSize)
     
-    // Fetch from NewsAPI, PA Media, and Mediastack in parallel
-    console.log('Starting parallel fetch from NewsAPI, PA Media, and Mediastack...')
-    const [newsApiData, paMediaData, mediastackData] = await Promise.allSettled([
-      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.5)), // 50% from NewsAPI
+    // Fetch from NewsAPI, PA Media, Mediastack, and YouTube in parallel
+    console.log('Starting parallel fetch from NewsAPI, PA Media, Mediastack, and YouTube...')
+    const [newsApiData, paMediaData, mediastackData, youtubeData] = await Promise.allSettled([
+      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.3)), // 30% from NewsAPI (reduced from 50%)
       fetchPAMedia(category, Math.ceil(pageSize * 0.2)), // 20% from PA Media
-      fetchMediastack(category, Math.ceil(pageSize * 0.3)) // 30% from Mediastack
+      fetchMediastack(category, Math.ceil(pageSize * 0.3)), // 30% from Mediastack
+      fetchYouTube(category, Math.ceil(pageSize * 0.2)) // 20% from YouTube
     ])
     
     let newsApiArticles: any[] = []
     let paMediaArticles: any[] = []
     let mediastackArticles: any[] = []
+    let youtubeArticles: any[] = []
     
     // Process NewsAPI results
     if (newsApiData.status === 'fulfilled') {
@@ -48,19 +50,32 @@ Deno.serve(async (req) => {
       console.error('Mediastack failed:', mediastackData.reason)
     }
     
-    // Intertwine articles - mix all three sources
+    // Process YouTube results
+    if (youtubeData.status === 'fulfilled') {
+      youtubeArticles = youtubeData.value || []
+      console.log(`Successfully fetched ${youtubeArticles.length} YouTube videos`)
+    } else {
+      console.error('YouTube failed:', youtubeData.reason)
+    }
+    
+    // Intertwine articles - mix all four sources
     const interweavedArticles: any[] = []
     let newsIndex = 0
     let paIndex = 0
     let mediastackIndex = 0
+    let youtubeIndex = 0
     
-    for (let i = 0; i < pageSize && (newsIndex < newsApiArticles.length || paIndex < paMediaArticles.length || mediastackIndex < mediastackArticles.length); i++) {
-      if ((i + 1) % 4 === 0 && paIndex < paMediaArticles.length) {
+    for (let i = 0; i < pageSize && (newsIndex < newsApiArticles.length || paIndex < paMediaArticles.length || mediastackIndex < mediastackArticles.length || youtubeIndex < youtubeArticles.length); i++) {
+      if ((i + 1) % 5 === 0 && youtubeIndex < youtubeArticles.length) {
+        // Every 5th article is from YouTube (20%)
+        interweavedArticles.push(youtubeArticles[youtubeIndex])
+        youtubeIndex++
+      } else if ((i + 1) % 4 === 0 && paIndex < paMediaArticles.length) {
         // Every 4th article is from PA Media
         interweavedArticles.push(paMediaArticles[paIndex])
         paIndex++
-      } else if ((i + 1) % 6 === 0 && mediastackIndex < mediastackArticles.length) {
-        // Every 6th article is from Mediastack
+      } else if ((i + 1) % 7 === 0 && mediastackIndex < mediastackArticles.length) {
+        // Every 7th article is from Mediastack
         interweavedArticles.push(mediastackArticles[mediastackIndex])
         mediastackIndex++
       } else if (newsIndex < newsApiArticles.length) {
@@ -68,13 +83,17 @@ Deno.serve(async (req) => {
         interweavedArticles.push(newsApiArticles[newsIndex])
         newsIndex++
       } else if (paIndex < paMediaArticles.length) {
-        // If NewsAPI is exhausted, fill with PA Media
+        // Fill with PA Media if NewsAPI is exhausted
         interweavedArticles.push(paMediaArticles[paIndex])
         paIndex++
       } else if (mediastackIndex < mediastackArticles.length) {
-        // If others are exhausted, fill with Mediastack
+        // Fill with Mediastack
         interweavedArticles.push(mediastackArticles[mediastackIndex])
         mediastackIndex++
+      } else if (youtubeIndex < youtubeArticles.length) {
+        // Fill with YouTube videos
+        interweavedArticles.push(youtubeArticles[youtubeIndex])
+        youtubeIndex++
       }
     }
     
@@ -83,7 +102,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         articles: interweavedArticles,
-        totalResults: newsApiArticles.length + paMediaArticles.length + mediastackArticles.length
+        totalResults: newsApiArticles.length + paMediaArticles.length + mediastackArticles.length + youtubeArticles.length
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -259,7 +278,8 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
         source: article.source?.name || 'Unknown Source',
         category: category,
         publishedAt: article.publishedAt || new Date().toISOString(),
-        readTime: `${Math.ceil((fullContent?.length || 500) / 200)} min read`
+        readTime: `${Math.ceil((fullContent?.length || 500) / 200)} min read`,
+        isVideo: false
       }
     })
   )
@@ -392,7 +412,8 @@ async function fetchPAMedia(category: string, pageSize: number) {
           source: 'PA Media',
           category: mappedCategory,
           publishedAt: item.versioncreated || item.published || item.created_date || new Date().toISOString(),
-          readTime: `${Math.ceil((item.body_text?.length || item.content?.length || 500) / 200)} min read`
+          readTime: `${Math.ceil((item.body_text?.length || item.content?.length || 500) / 200)} min read`,
+          isVideo: false
         }
       })
       
@@ -472,12 +493,131 @@ async function fetchMediastack(category: string, pageSize: number) {
         source: article.source || 'Mediastack',
         category: mappedCategory,
         publishedAt: article.published_at || new Date().toISOString(),
-        readTime: `${Math.ceil((article.description?.length || 500) / 200)} min read`
+        readTime: `${Math.ceil((article.description?.length || 500) / 200)} min read`,
+        isVideo: false
       }
     })
     
   } catch (error) {
     console.error('Error fetching Mediastack articles:', error)
     return []
+  }
+}
+
+async function fetchYouTube(category: string, pageSize: number) {
+  const apiKey = Deno.env.get('YOUTUBE_API_KEY')
+  if (!apiKey) {
+    console.log('YouTube API key not configured, skipping YouTube videos')
+    return []
+  }
+
+  // Map categories to search queries as specified by user
+  const searchQueries: { [key: string]: string } = {
+    'all': 'breaking news latest news today',
+    'sport': 'sports news football rugby cricket f1',
+    'business': 'breaking finance business news',
+    'politics': 'politics news government election trump starmer',
+    'technology': 'breaking news technology science space',
+    'entertainment': 'breaking music entertainment movie news'
+  }
+
+  const searchQuery = searchQueries[category] || searchQueries['all']
+  
+  try {
+    console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
+    
+    const url = new URL('https://www.googleapis.com/youtube/v3/search')
+    url.searchParams.set('key', apiKey)
+    url.searchParams.set('part', 'snippet')
+    url.searchParams.set('q', searchQuery)
+    url.searchParams.set('type', 'video')
+    url.searchParams.set('order', 'date')
+    url.searchParams.set('maxResults', pageSize.toString())
+    url.searchParams.set('publishedAfter', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()) // Last 48 hours
+    url.searchParams.set('relevanceLanguage', 'en')
+    url.searchParams.set('regionCode', 'US')
+    
+    // Target major news channels for better quality
+    const newsChannels = [
+      'UCupvZG-5ko_eiXAupbDfxWw', // CNN
+      'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
+      'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
+      'UCR-_HpHfVLKkMCPQg9lMLZA', // Reuters
+      'UChi4LTh6KRGkQYJRFDnpN9w', // NBC News
+      'UCqnbDFdCpuN8CMEg0VuEBqA', // ABC News
+    ]
+    
+    console.log('YouTube URL:', url.toString().replace(apiKey, '[REDACTED]'))
+
+    const response = await fetch(url.toString())
+    
+    if (!response.ok) {
+      throw new Error(`YouTube API request failed: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    
+    if (data.error) {
+      throw new Error(`YouTube API error: ${data.error.message}`)
+    }
+
+    const videos = data.items || []
+    
+    // Get additional video details including duration
+    const videoIds = videos.map((video: any) => video.id.videoId).join(',')
+    
+    if (videoIds) {
+      const detailsUrl = new URL('https://www.googleapis.com/youtube/v3/videos')
+      detailsUrl.searchParams.set('key', apiKey)
+      detailsUrl.searchParams.set('part', 'contentDetails,statistics')
+      detailsUrl.searchParams.set('id', videoIds)
+      
+      const detailsResponse = await fetch(detailsUrl.toString())
+      const detailsData = await detailsResponse.json()
+      const videoDetails = detailsData.items || []
+      
+      return videos.map((video: any, index: number) => {
+        const details = videoDetails.find((d: any) => d.id === video.id.videoId)
+        const duration = details ? parseDuration(details.contentDetails.duration) : 'N/A'
+        
+        return {
+          id: `youtube-${category}-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
+          title: video.snippet.title || 'Untitled Video',
+          summary: video.snippet.description ? video.snippet.description.substring(0, 200) + '...' : '',
+          content: video.snippet.description || '',
+          image: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
+          source: video.snippet.channelTitle || 'YouTube',
+          category: category,
+          publishedAt: video.snippet.publishedAt || new Date().toISOString(),
+          readTime: duration,
+          isVideo: true,
+          videoId: video.id.videoId,
+          embedUrl: `https://www.youtube.com/embed/${video.id.videoId}`,
+          videoThumbnail: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url
+        }
+      })
+    }
+    
+    return []
+    
+  } catch (error) {
+    console.error('Error fetching YouTube videos:', error)
+    return []
+  }
+}
+
+// Helper function to parse YouTube duration format (PT4M13S -> 4:13)
+function parseDuration(duration: string): string {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  if (!match) return 'N/A'
+  
+  const hours = parseInt(match[1] || '0')
+  const minutes = parseInt(match[2] || '0')
+  const seconds = parseInt(match[3] || '0')
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  } else {
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 }
