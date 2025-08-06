@@ -622,7 +622,9 @@ async function fetchYouTube(category: string, pageSize: number) {
       const errorText = await response.text()
       console.error(`=== YOUTUBE API FAILED ===`)
       console.error(`Status: ${response.status} ${response.statusText}`)
-      console.error(`Error text: ${errorText}`)
+      console.error(`Error response body: ${errorText}`)
+      console.error(`Request URL domain: supabase.co (edge function)`)
+      console.error(`This might be an API key restriction issue!`)
       return []
     }
 
