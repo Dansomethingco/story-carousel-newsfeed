@@ -481,12 +481,18 @@ async function fetchMediastack(category: string, pageSize: number) {
         mappedCategory = 'sport';
       }
       
+      // Only use image if it exists and is a valid URL, otherwise set to null
+      let imageUrl = null;
+      if (article.image && article.image.trim() && article.image.startsWith('http')) {
+        imageUrl = article.image;
+      }
+      
       return {
         id: `mediastack-${category}-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
         title: article.title || 'Untitled',
         summary: article.description || '',
         content: article.description || '', // Mediastack only provides descriptions, not full content
-        image: article.image || `https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=800&h=400&fit=crop`,
+        image: imageUrl,
         source: article.source || 'Mediastack',
         category: mappedCategory,
         publishedAt: article.published_at || new Date().toISOString(),
