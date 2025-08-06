@@ -586,68 +586,69 @@ async function fetchYouTube(category: string, pageSize: number) {
   try {
     console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
     
-    // First try searching from specific UK news channels
+    // Try to get videos from multiple approaches for better results
     let allVideos = []
     
-    // Try to get videos from major UK news channels first
+    // First, try a general search without channel restrictions
+    const generalUrl = new URL('https://www.googleapis.com/youtube/v3/search')
+    generalUrl.searchParams.set('key', apiKey)
+    generalUrl.searchParams.set('part', 'snippet')
+    generalUrl.searchParams.set('q', searchQuery)
+    generalUrl.searchParams.set('type', 'video')
+    generalUrl.searchParams.set('order', 'date')
+    generalUrl.searchParams.set('maxResults', Math.ceil(pageSize * 0.7).toString()) // Get more to filter later
+    generalUrl.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
+    generalUrl.searchParams.set('relevanceLanguage', 'en')
+    generalUrl.searchParams.set('regionCode', 'GB')
+    
+    console.log('YouTube general search URL:', generalUrl.toString().replace(apiKey, '[REDACTED]'))
+
+    try {
+      const generalResponse = await fetch(generalUrl.toString())
+      if (generalResponse.ok) {
+        const generalData = await generalResponse.json()
+        if (generalData.items) {
+          allVideos.push(...generalData.items)
+        }
+      }
+    } catch (err) {
+      console.log('General YouTube search failed:', err)
+    }
+    
+    // Then try to get specific videos from major UK news channels
     const priorityChannels = [
       'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
       'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
-      'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
-      'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
     ]
     
-    // Try each priority channel individually
     for (const channelId of priorityChannels) {
-      if (allVideos.length >= pageSize) break
+      if (allVideos.length >= pageSize * 2) break // Stop if we have enough
       
-      const url = new URL('https://www.googleapis.com/youtube/v3/search')
-      url.searchParams.set('key', apiKey)
-      url.searchParams.set('part', 'snippet')
-      url.searchParams.set('q', searchQuery)
-      url.searchParams.set('type', 'video')
-      url.searchParams.set('order', 'date')
-      url.searchParams.set('maxResults', '2') // Get 2 videos per priority channel
-      url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
-      url.searchParams.set('relevanceLanguage', 'en')
-      url.searchParams.set('regionCode', 'GB')
-      url.searchParams.set('channelId', channelId)
+      const channelUrl = new URL('https://www.googleapis.com/youtube/v3/search')
+      channelUrl.searchParams.set('key', apiKey)
+      channelUrl.searchParams.set('part', 'snippet')
+      channelUrl.searchParams.set('q', searchQuery)
+      channelUrl.searchParams.set('type', 'video')
+      channelUrl.searchParams.set('order', 'date')
+      channelUrl.searchParams.set('maxResults', '3')
+      channelUrl.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString())
+      channelUrl.searchParams.set('relevanceLanguage', 'en')
+      channelUrl.searchParams.set('regionCode', 'GB')
+      channelUrl.searchParams.set('channelId', channelId)
       
       try {
-        const response = await fetch(url.toString())
-        if (response.ok) {
-          const data = await response.json()
-          const videos = data.items || []
-          allVideos.push(...videos)
+        const channelResponse = await fetch(channelUrl.toString())
+        if (channelResponse.ok) {
+          const channelData = await channelResponse.json()
+          if (channelData.items) {
+            allVideos.push(...channelData.items)
+          }
         }
       } catch (err) {
         console.log(`Failed to fetch from channel ${channelId}:`, err)
       }
     }
-    
-    // If we don't have enough videos, do a general search
-    if (allVideos.length < pageSize) {
-      const url = new URL('https://www.googleapis.com/youtube/v3/search')
-      url.searchParams.set('key', apiKey)
-      url.searchParams.set('part', 'snippet')
-      url.searchParams.set('q', searchQuery)
-      url.searchParams.set('type', 'video')
-      url.searchParams.set('order', 'date')
-      url.searchParams.set('maxResults', (pageSize - allVideos.length).toString())
-      url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
-      url.searchParams.set('relevanceLanguage', 'en')
-      url.searchParams.set('regionCode', 'GB')
-      
-      console.log('YouTube general search URL:', url.toString().replace(apiKey, '[REDACTED]'))
 
-      const response = await fetch(url.toString())
-      
-      if (response.ok) {
-        const data = await response.json()
-        const videos = data.items || []
-        allVideos.push(...videos)
-      }
-    }
     
     console.log(`Found ${allVideos.length} YouTube videos total`)
     
