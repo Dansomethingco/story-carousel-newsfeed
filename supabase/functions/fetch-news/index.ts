@@ -539,13 +539,16 @@ async function fetchMediastack(category: string, pageSize: number) {
 async function fetchYouTube(category: string, pageSize: number) {
   const apiKey = Deno.env.get('YOUTUBE_API_KEY')
   if (!apiKey) {
-    console.log('YouTube API key not configured, skipping YouTube videos')
+    console.error('YouTube API key not configured, skipping YouTube videos')
     return []
   }
+  
+  console.log('YouTube API key found, proceeding with video fetch...')
 
   // Map categories to simplified search queries
   const searchQueries: { [key: string]: string } = {
     'all': 'breaking news',
+    'general': 'breaking news', // Add general category mapping
     'sport': 'sports news',
     'business': 'business news',
     'politics': 'politics news',
@@ -586,96 +589,45 @@ async function fetchYouTube(category: string, pageSize: number) {
   try {
     console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
     
-    // Try to get videos from multiple approaches for better results
-    let allVideos = []
+    // Simplified approach - just do a general search first
+    const url = new URL('https://www.googleapis.com/youtube/v3/search')
+    url.searchParams.set('key', apiKey)
+    url.searchParams.set('part', 'snippet')
+    url.searchParams.set('q', searchQuery + ' news')
+    url.searchParams.set('type', 'video')
+    url.searchParams.set('order', 'date')
+    url.searchParams.set('maxResults', pageSize.toString())
+    url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString())
+    url.searchParams.set('relevanceLanguage', 'en')
+    url.searchParams.set('regionCode', 'GB')
     
-    // First, try a general search without channel restrictions
-    const generalUrl = new URL('https://www.googleapis.com/youtube/v3/search')
-    generalUrl.searchParams.set('key', apiKey)
-    generalUrl.searchParams.set('part', 'snippet')
-    generalUrl.searchParams.set('q', searchQuery)
-    generalUrl.searchParams.set('type', 'video')
-    generalUrl.searchParams.set('order', 'date')
-    generalUrl.searchParams.set('maxResults', Math.ceil(pageSize * 0.7).toString()) // Get more to filter later
-    generalUrl.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
-    generalUrl.searchParams.set('relevanceLanguage', 'en')
-    generalUrl.searchParams.set('regionCode', 'GB')
-    
-    console.log('YouTube general search URL:', generalUrl.toString().replace(apiKey, '[REDACTED]'))
+    console.log('YouTube search URL:', url.toString().replace(apiKey, '[REDACTED]'))
 
-    try {
-      const generalResponse = await fetch(generalUrl.toString())
-      if (generalResponse.ok) {
-        const generalData = await generalResponse.json()
-        if (generalData.items) {
-          allVideos.push(...generalData.items)
-        }
-      }
-    } catch (err) {
-      console.log('General YouTube search failed:', err)
-    }
+    const response = await fetch(url.toString())
     
-    // Then try to get specific videos from major UK news channels
-    const priorityChannels = [
-      'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
-      'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
-      'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
-      'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
-      'UC7sKjgexQyOqaT_hLTZZa6Q', // GBNews
-      'UCLr3JBqAV5B7_Z_Bi9qS8iQ', // TalkTV
-      'UCEcWIpRNf6dJ9IpxJ3bVoMw', // Guardian News
-      'UCJyR9zJUJbLyV6C-2Dk9MmA', // Times News
-      'UCL2rKZvF-ow5_JUhlNJhO_Q', // The Telegraph
-      'UCKkS6d0cKMBL8ziYFO6k2ag', // Financial Times
-      'UC8oETwb3P4xGDqjQr6FzGSw', // The Sun
-      'UC5i68sO3w6wvNk8lQaOJGLA', // Daily Mail World
-      'UCUkWKE-RX1BlXH31NkZhm4g', // The Mirror
-      'UC0fDgfgaWRLOlqSJr4rMUAQ', // Daily Express
-      'UCqFfguwqnKaNnRPPrpYT5nA', // Metro_UK
-      'UCJWDNhLBKhBU2YqZoKhz4Xw', // The Independent
-      'UCkWQ0gDrqOCarmUKmppD7GQ', // The Economist
-      'UCJ7wYCT7aBRnr7_EO-UJx9Q', // New Statesman
-      'UC7_l_Bhu-V3OvFhYxDYOj7A', // SpectatorTV
-      'UCNAf1k0yIjyGu3k9BwAg3lg', // Sky Sports
-      'UCw6SJIJx-TYz6YBK2lVLCqw', // TNT Sports
-      'UC_VhdOOEVKM5tXjF5B8e0Aw', // BBC Sport
-      'UC4k8iTGOUBaKCRa4PKvJ4pw', // talkSPORT
-      'UCQvQ8LPxhq7TzUpRFPAJGdQ'  // The Football Terrace
-    ]
-    
-    for (const channelId of priorityChannels) {
-      if (allVideos.length >= pageSize * 2) break // Stop if we have enough
-      
-      const channelUrl = new URL('https://www.googleapis.com/youtube/v3/search')
-      channelUrl.searchParams.set('key', apiKey)
-      channelUrl.searchParams.set('part', 'snippet')
-      channelUrl.searchParams.set('q', searchQuery)
-      channelUrl.searchParams.set('type', 'video')
-      channelUrl.searchParams.set('order', 'date')
-      channelUrl.searchParams.set('maxResults', '2')
-      channelUrl.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString())
-      channelUrl.searchParams.set('relevanceLanguage', 'en')
-      channelUrl.searchParams.set('regionCode', 'GB')
-      channelUrl.searchParams.set('channelId', channelId)
-      
-      try {
-        const channelResponse = await fetch(channelUrl.toString())
-        if (channelResponse.ok) {
-          const channelData = await channelResponse.json()
-          if (channelData.items) {
-            allVideos.push(...channelData.items)
-          }
-        }
-      } catch (err) {
-        console.log(`Failed to fetch from channel ${channelId}:`, err)
-      }
+    if (!response.ok) {
+      console.error(`YouTube API request failed: ${response.status} ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('YouTube API error response:', errorText)
+      return []
     }
 
+    const data = await response.json()
     
-    console.log(`Found ${allVideos.length} YouTube videos total`)
+    if (data.error) {
+      console.error(`YouTube API error: ${JSON.stringify(data.error)}`)
+      return []
+    }
+
+    console.log(`YouTube API returned ${data.items?.length || 0} videos`)
     
+    if (!data.items || data.items.length === 0) {
+      console.log('No videos found in YouTube response')
+      return []
+    }
+
     // Filter out non-English videos
-    const englishVideos = allVideos.filter((video: any) => {
+    const englishVideos = data.items.filter((video: any) => {
       const title = video.snippet.title || ''
       const description = video.snippet.description || ''
       
