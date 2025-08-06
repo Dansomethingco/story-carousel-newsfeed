@@ -15,10 +15,10 @@ Deno.serve(async (req) => {
     // Fetch from NewsAPI, PA Media, Mediastack, and YouTube in parallel
     console.log('Starting parallel fetch from NewsAPI, PA Media, Mediastack, and YouTube...')
     const [newsApiData, paMediaData, mediastackData, youtubeData] = await Promise.allSettled([
-      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.3)), // 30% from NewsAPI (reduced from 50%)
-      fetchPAMedia(category, Math.ceil(pageSize * 0.2)), // 20% from PA Media
+      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.35)), // 35% from NewsAPI 
+      fetchPAMedia(category, 0), // 0% from PA Media (disabled due to API failures)
       fetchMediastack(category, Math.ceil(pageSize * 0.3)), // 30% from Mediastack
-      fetchYouTube(category, Math.ceil(pageSize * 0.2)) // 20% from YouTube
+      fetchYouTube(category, Math.ceil(pageSize * 0.35)) // 35% from YouTube
     ])
     
     let newsApiArticles: any[] = []
@@ -66,34 +66,31 @@ Deno.serve(async (req) => {
     let youtubeIndex = 0
     
     for (let i = 0; i < pageSize && (newsIndex < newsApiArticles.length || paIndex < paMediaArticles.length || mediastackIndex < mediastackArticles.length || youtubeIndex < youtubeArticles.length); i++) {
-      if ((i + 1) % 5 === 0 && youtubeIndex < youtubeArticles.length) {
-        // Every 5th article is from YouTube (20%)
+      // YouTube gets 35% - approximately every 3rd article
+      if ((i + 1) % 3 === 0 && youtubeIndex < youtubeArticles.length) {
         interweavedArticles.push(youtubeArticles[youtubeIndex])
         youtubeIndex++
-      } else if ((i + 1) % 4 === 0 && paIndex < paMediaArticles.length) {
-        // Every 4th article is from PA Media
-        interweavedArticles.push(paMediaArticles[paIndex])
-        paIndex++
-      } else if ((i + 1) % 7 === 0 && mediastackIndex < mediastackArticles.length) {
-        // Every 7th article is from Mediastack
+      } 
+      // Mediastack gets 30% - every 10th and 7th position
+      else if (((i + 1) % 10 === 0 || (i + 1) % 7 === 0) && mediastackIndex < mediastackArticles.length) {
         interweavedArticles.push(mediastackArticles[mediastackIndex])
         mediastackIndex++
-      } else if (newsIndex < newsApiArticles.length) {
-        // Other articles from NewsAPI
+      } 
+      // NewsAPI fills the remaining 35% 
+      else if (newsIndex < newsApiArticles.length) {
         interweavedArticles.push(newsApiArticles[newsIndex])
         newsIndex++
-      } else if (paIndex < paMediaArticles.length) {
-        // Fill with PA Media if NewsAPI is exhausted
-        interweavedArticles.push(paMediaArticles[paIndex])
-        paIndex++
-      } else if (mediastackIndex < mediastackArticles.length) {
-        // Fill with Mediastack
-        interweavedArticles.push(mediastackArticles[mediastackIndex])
-        mediastackIndex++
-      } else if (youtubeIndex < youtubeArticles.length) {
-        // Fill with YouTube videos
+      } 
+      // Fill remaining positions with any available content
+      else if (youtubeIndex < youtubeArticles.length) {
         interweavedArticles.push(youtubeArticles[youtubeIndex])
         youtubeIndex++
+      } else if (mediastackIndex < mediastackArticles.length) {
+        interweavedArticles.push(mediastackArticles[mediastackIndex])
+        mediastackIndex++
+      } else if (paIndex < paMediaArticles.length) {
+        interweavedArticles.push(paMediaArticles[paIndex])
+        paIndex++
       }
     }
     
@@ -554,39 +551,73 @@ async function fetchYouTube(category: string, pageSize: number) {
   try {
     console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
     
-    // Create a channel ID query string for filtering
-    const channelIds = newsChannels.join(',')
+    // First try searching from specific UK news channels
+    let allVideos = []
     
-    const url = new URL('https://www.googleapis.com/youtube/v3/search')
-    url.searchParams.set('key', apiKey)
-    url.searchParams.set('part', 'snippet')
-    url.searchParams.set('q', searchQuery)
-    url.searchParams.set('type', 'video')
-    url.searchParams.set('order', 'date')
-    url.searchParams.set('maxResults', pageSize.toString())
-    url.searchParams.set('publishedAfter', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
-    url.searchParams.set('relevanceLanguage', 'en')
-    url.searchParams.set('regionCode', 'GB')
-    url.searchParams.set('channelId', channelIds)
+    // Try to get videos from major UK news channels first
+    const priorityChannels = [
+      'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
+      'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
+      'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
+      'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
+    ]
     
-    console.log('YouTube URL:', url.toString().replace(apiKey, '[REDACTED]'))
-
-    const response = await fetch(url.toString())
-    
-    if (!response.ok) {
-      throw new Error(`YouTube API request failed: ${response.status} ${response.statusText}`)
+    // Try each priority channel individually
+    for (const channelId of priorityChannels) {
+      if (allVideos.length >= pageSize) break
+      
+      const url = new URL('https://www.googleapis.com/youtube/v3/search')
+      url.searchParams.set('key', apiKey)
+      url.searchParams.set('part', 'snippet')
+      url.searchParams.set('q', searchQuery)
+      url.searchParams.set('type', 'video')
+      url.searchParams.set('order', 'date')
+      url.searchParams.set('maxResults', '2') // Get 2 videos per priority channel
+      url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
+      url.searchParams.set('relevanceLanguage', 'en')
+      url.searchParams.set('regionCode', 'GB')
+      url.searchParams.set('channelId', channelId)
+      
+      try {
+        const response = await fetch(url.toString())
+        if (response.ok) {
+          const data = await response.json()
+          const videos = data.items || []
+          allVideos.push(...videos)
+        }
+      } catch (err) {
+        console.log(`Failed to fetch from channel ${channelId}:`, err)
+      }
     }
-
-    const data = await response.json()
     
-    if (data.error) {
-      throw new Error(`YouTube API error: ${data.error.message}`)
+    // If we don't have enough videos, do a general search
+    if (allVideos.length < pageSize) {
+      const url = new URL('https://www.googleapis.com/youtube/v3/search')
+      url.searchParams.set('key', apiKey)
+      url.searchParams.set('part', 'snippet')
+      url.searchParams.set('q', searchQuery)
+      url.searchParams.set('type', 'video')
+      url.searchParams.set('order', 'date')
+      url.searchParams.set('maxResults', (pageSize - allVideos.length).toString())
+      url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
+      url.searchParams.set('relevanceLanguage', 'en')
+      url.searchParams.set('regionCode', 'GB')
+      
+      console.log('YouTube general search URL:', url.toString().replace(apiKey, '[REDACTED]'))
+
+      const response = await fetch(url.toString())
+      
+      if (response.ok) {
+        const data = await response.json()
+        const videos = data.items || []
+        allVideos.push(...videos)
+      }
     }
-
-    const videos = data.items || []
     
-    // Get additional video details including duration
-    const videoIds = videos.map((video: any) => video.id.videoId).join(',')
+    console.log(`Found ${allVideos.length} YouTube videos total`)
+    
+    // Get additional video details including duration for all videos
+    const videoIds = allVideos.map((video: any) => video.id.videoId).join(',')
     
     if (videoIds) {
       const detailsUrl = new URL('https://www.googleapis.com/youtube/v3/videos')
@@ -598,7 +629,7 @@ async function fetchYouTube(category: string, pageSize: number) {
       const detailsData = await detailsResponse.json()
       const videoDetails = detailsData.items || []
       
-      return videos.map((video: any, index: number) => {
+      return allVideos.slice(0, pageSize).map((video: any, index: number) => {
         const details = videoDetails.find((d: any) => d.id === video.id.videoId)
         const duration = details ? parseDuration(details.contentDetails.duration) : 'N/A'
         
