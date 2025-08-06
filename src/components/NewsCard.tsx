@@ -117,14 +117,22 @@ export const NewsCard = ({ article }: NewsCardProps) => {
         )}
 
         {/* Summary */}
-        <p className="text-muted-foreground leading-relaxed text-base md:text-lg mb-4">
-          {article.summary}
-        </p>
+        {article.summary && (
+          <p className="text-muted-foreground leading-relaxed text-base md:text-lg mb-4">
+            {article.summary}
+          </p>
+        )}
 
         {/* Content Preview */}
-        <div className="text-foreground leading-relaxed text-sm md:text-base line-clamp-6">
-          {article.content}
-        </div>
+        {article.content ? (
+          <div className="text-foreground leading-relaxed text-sm md:text-base line-clamp-6">
+            {article.content}
+          </div>
+        ) : (
+          <div className="text-muted-foreground leading-relaxed text-sm md:text-base italic">
+            Content not available - article may be behind a paywall or require subscription.
+          </div>
+        )}
       </div>
     </div>
   );
