@@ -616,8 +616,25 @@ async function fetchYouTube(category: string, pageSize: number) {
     
     console.log(`Found ${allVideos.length} YouTube videos total`)
     
-    // Get additional video details including duration for all videos
-    const videoIds = allVideos.map((video: any) => video.id.videoId).join(',')
+    // Filter out non-English videos
+    const englishVideos = allVideos.filter((video: any) => {
+      const title = video.snippet.title || ''
+      const description = video.snippet.description || ''
+      
+      // Check if title contains only English characters (Latin alphabet, numbers, common punctuation)
+      const englishRegex = /^[a-zA-Z0-9\s\-_.,!?:;'"()\[\]{}@#$%&*+=|\\/<>~`^]*$/
+      const isEnglishTitle = englishRegex.test(title)
+      
+      // Additional check for common non-English patterns
+      const hasNonEnglishChars = /[\u0080-\uFFFF]/.test(title + description)
+      
+      return isEnglishTitle && !hasNonEnglishChars
+    })
+    
+    console.log(`Filtered to ${englishVideos.length} English-only videos`)
+    
+    // Get additional video details including duration for English videos only
+    const videoIds = englishVideos.map((video: any) => video.id.videoId).join(',')
     
     if (videoIds) {
       const detailsUrl = new URL('https://www.googleapis.com/youtube/v3/videos')
@@ -629,7 +646,7 @@ async function fetchYouTube(category: string, pageSize: number) {
       const detailsData = await detailsResponse.json()
       const videoDetails = detailsData.items || []
       
-      return allVideos.slice(0, pageSize).map((video: any, index: number) => {
+      return englishVideos.slice(0, pageSize).map((video: any, index: number) => {
         const details = videoDetails.find((d: any) => d.id === video.id.videoId)
         const duration = details ? parseDuration(details.contentDetails.duration) : 'N/A'
         
