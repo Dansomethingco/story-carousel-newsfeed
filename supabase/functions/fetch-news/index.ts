@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
       console.log(`Successfully fetched ${youtubeArticles.length} YouTube videos`)
     } else {
       console.error('YouTube failed:', youtubeData.reason)
+      console.error('YouTube error details:', JSON.stringify(youtubeData.reason))
     }
     
     // Intertwine articles - mix all four sources
@@ -587,61 +588,80 @@ async function fetchYouTube(category: string, pageSize: number) {
   const searchQuery = searchQueries[category] || searchQueries['all']
   
   try {
-    console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
+    console.log(`=== YOUTUBE DEBUG START ===`)
+    console.log(`Category: ${category}, SearchQuery: ${searchQuery}, PageSize: ${pageSize}`)
     
-    // Simplified approach - just do a general search first
+    // Ultra-simplified test - just get any recent UK news videos
     const url = new URL('https://www.googleapis.com/youtube/v3/search')
     url.searchParams.set('key', apiKey)
     url.searchParams.set('part', 'snippet')
-    url.searchParams.set('q', searchQuery + ' news')
+    url.searchParams.set('q', 'UK news today')
     url.searchParams.set('type', 'video')
     url.searchParams.set('order', 'date')
-    url.searchParams.set('maxResults', pageSize.toString())
-    url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString())
+    url.searchParams.set('maxResults', '3')
+    url.searchParams.set('publishedAfter', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours for testing
     url.searchParams.set('relevanceLanguage', 'en')
     url.searchParams.set('regionCode', 'GB')
     
-    console.log('YouTube search URL:', url.toString().replace(apiKey, '[REDACTED]'))
+    console.log('=== YOUTUBE API CALL ===')
+    console.log('YouTube URL (without key):', url.toString().replace(apiKey, '[REDACTED]'))
 
     const response = await fetch(url.toString())
     
+    console.log(`=== YOUTUBE RESPONSE ===`)
+    console.log(`Response status: ${response.status}`)
+    console.log(`Response ok: ${response.ok}`)
+    
     if (!response.ok) {
-      console.error(`YouTube API request failed: ${response.status} ${response.statusText}`)
       const errorText = await response.text()
-      console.error('YouTube API error response:', errorText)
+      console.error(`=== YOUTUBE API FAILED ===`)
+      console.error(`Status: ${response.status} ${response.statusText}`)
+      console.error(`Error text: ${errorText}`)
       return []
     }
 
     const data = await response.json()
+    console.log(`=== YOUTUBE DATA ===`)
+    console.log(`Has error: ${!!data.error}`)
+    console.log(`Items count: ${data.items?.length || 0}`)
     
     if (data.error) {
-      console.error(`YouTube API error: ${JSON.stringify(data.error)}`)
+      console.error(`=== YOUTUBE API ERROR ===`)
+      console.error(`Error: ${JSON.stringify(data.error)}`)
       return []
     }
 
-    console.log(`YouTube API returned ${data.items?.length || 0} videos`)
-    
     if (!data.items || data.items.length === 0) {
-      console.log('No videos found in YouTube response')
+      console.log('=== NO YOUTUBE VIDEOS FOUND ===')
       return []
     }
 
-    // Filter out non-English videos
-    const englishVideos = data.items.filter((video: any) => {
-      const title = video.snippet.title || ''
-      const description = video.snippet.description || ''
-      
-      // Check if title contains only English characters (Latin alphabet, numbers, common punctuation)
-      const englishRegex = /^[a-zA-Z0-9\s\-_.,!?:;'"()\[\]{}@#$%&*+=|\\/<>~`^]*$/
-      const isEnglishTitle = englishRegex.test(title)
-      
-      // Additional check for common non-English patterns
-      const hasNonEnglishChars = /[\u0080-\uFFFF]/.test(title + description)
-      
-      return isEnglishTitle && !hasNonEnglishChars
-    })
+    console.log(`=== PROCESSING ${data.items.length} VIDEOS ===`)
     
-    console.log(`Filtered to ${englishVideos.length} English-only videos`)
+    // Just return first video for testing, no complex filtering
+    const testVideo = data.items[0]
+    const result = [{
+      id: `youtube-test-${Date.now()}`,
+      title: testVideo.snippet.title || 'Test Video',
+      summary: testVideo.snippet.description ? testVideo.snippet.description.substring(0, 200) + '...' : 'Test video summary',
+      content: testVideo.snippet.description || 'Test video content',
+      image: testVideo.snippet.thumbnails?.high?.url || testVideo.snippet.thumbnails?.medium?.url,
+      source: testVideo.snippet.channelTitle || 'YouTube',
+      category: category,
+      publishedAt: testVideo.snippet.publishedAt || new Date().toISOString(),
+      readTime: '2:30',
+      isVideo: true,
+      videoId: testVideo.id.videoId,
+      embedUrl: `https://www.youtube.com/embed/${testVideo.id.videoId}`,
+      videoThumbnail: testVideo.snippet.thumbnails?.high?.url || testVideo.snippet.thumbnails?.medium?.url
+    }]
+    
+    console.log(`=== YOUTUBE RETURNING ${result.length} VIDEOS ===`)
+    console.log(`Video title: ${result[0].title}`)
+    console.log(`Video ID: ${result[0].videoId}`)
+    console.log(`=== YOUTUBE DEBUG END ===`)
+    
+    return result
     
     // Get additional video details including duration for English videos only
     const videoIds = englishVideos.map((video: any) => video.id.videoId).join(',')
