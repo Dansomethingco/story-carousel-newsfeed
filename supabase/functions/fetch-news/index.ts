@@ -511,20 +511,51 @@ async function fetchYouTube(category: string, pageSize: number) {
     return []
   }
 
-  // Map categories to search queries as specified by user
+  // Map categories to simplified search queries
   const searchQueries: { [key: string]: string } = {
-    'all': 'breaking news latest news today uk us english',
-    'sport': 'sports news football rugby cricket f1 uk us english',
-    'business': 'breaking finance business news uk us english',
-    'politics': 'politics news government election trump starmer uk us english',
-    'technology': 'breaking news technology science space uk us english',
-    'entertainment': 'breaking music entertainment movie news uk us english'
+    'all': 'breaking news',
+    'sport': 'sports news',
+    'business': 'business news',
+    'politics': 'politics news',
+    'technology': 'technology news',
+    'entertainment': 'entertainment news'
   }
+
+  // Target UK news channels for better quality content
+  const newsChannels = [
+    'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
+    'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
+    'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
+    'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
+    'UC7sKjgexQyOqaT_hLTZZa6Q', // GBNews
+    'UCLr3JBqAV5B7_Z_Bi9qS8iQ', // TalkTV
+    'UCEcWIpRNf6dJ9IpxJ3bVoMw', // Guardian News
+    'UCJyR9zJUJbLyV6C-2Dk9MmA', // Times News
+    'UCL2rKZvF-ow5_JUhlNJhO_Q', // The Telegraph
+    'UCKkS6d0cKMBL8ziYFO6k2ag', // Financial Times
+    'UC8oETwb3P4xGDqjQr6FzGSw', // The Sun
+    'UC5i68sO3w6wvNk8lQaOJGLA', // Daily Mail World
+    'UCUkWKE-RX1BlXH31NkZhm4g', // The Mirror
+    'UC0fDgfgaWRLOlqSJr4rMUAQ', // Daily Express
+    'UCqFfguwqnKaNnRPPrpYT5nA', // Metro_UK
+    'UCJWDNhLBKhBU2YqZoKhz4Xw', // The Independent
+    'UCkWQ0gDrqOCarmUKmppD7GQ', // The Economist
+    'UCJ7wYCT7aBRnr7_EO-UJx9Q', // New Statesman
+    'UC7_l_Bhu-V3OvFhYxDYOj7A', // SpectatorTV
+    'UCNAf1k0yIjyGu3k9BwAg3lg', // Sky Sports
+    'UCw6SJIJx-TYz6YBK2lVLCqw', // TNT Sports
+    'UC_VhdOOEVKM5tXjF5B8e0Aw', // BBC Sport
+    'UC4k8iTGOUBaKCRa4PKvJ4pw', // talkSPORT
+    'UCQvQ8LPxhq7TzUpRFPAJGdQ'  // The Football Terrace
+  ]
 
   const searchQuery = searchQueries[category] || searchQueries['all']
   
   try {
     console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
+    
+    // Create a channel ID query string for filtering
+    const channelIds = newsChannels.join(',')
     
     const url = new URL('https://www.googleapis.com/youtube/v3/search')
     url.searchParams.set('key', apiKey)
@@ -533,19 +564,10 @@ async function fetchYouTube(category: string, pageSize: number) {
     url.searchParams.set('type', 'video')
     url.searchParams.set('order', 'date')
     url.searchParams.set('maxResults', pageSize.toString())
-    url.searchParams.set('publishedAfter', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()) // Last 48 hours
+    url.searchParams.set('publishedAfter', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
     url.searchParams.set('relevanceLanguage', 'en')
-    url.searchParams.set('regionCode', 'US')
-    
-    // Target major news channels for better quality
-    const newsChannels = [
-      'UCupvZG-5ko_eiXAupbDfxWw', // CNN
-      'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
-      'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
-      'UCR-_HpHfVLKkMCPQg9lMLZA', // Reuters
-      'UChi4LTh6KRGkQYJRFDnpN9w', // NBC News
-      'UCqnbDFdCpuN8CMEg0VuEBqA', // ABC News
-    ]
+    url.searchParams.set('regionCode', 'GB')
+    url.searchParams.set('channelId', channelIds)
     
     console.log('YouTube URL:', url.toString().replace(apiKey, '[REDACTED]'))
 
