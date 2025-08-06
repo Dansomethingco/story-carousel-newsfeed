@@ -619,6 +619,28 @@ async function fetchYouTube(category: string, pageSize: number) {
     const priorityChannels = [
       'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
       'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
+      'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
+      'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
+      'UC7sKjgexQyOqaT_hLTZZa6Q', // GBNews
+      'UCLr3JBqAV5B7_Z_Bi9qS8iQ', // TalkTV
+      'UCEcWIpRNf6dJ9IpxJ3bVoMw', // Guardian News
+      'UCJyR9zJUJbLyV6C-2Dk9MmA', // Times News
+      'UCL2rKZvF-ow5_JUhlNJhO_Q', // The Telegraph
+      'UCKkS6d0cKMBL8ziYFO6k2ag', // Financial Times
+      'UC8oETwb3P4xGDqjQr6FzGSw', // The Sun
+      'UC5i68sO3w6wvNk8lQaOJGLA', // Daily Mail World
+      'UCUkWKE-RX1BlXH31NkZhm4g', // The Mirror
+      'UC0fDgfgaWRLOlqSJr4rMUAQ', // Daily Express
+      'UCqFfguwqnKaNnRPPrpYT5nA', // Metro_UK
+      'UCJWDNhLBKhBU2YqZoKhz4Xw', // The Independent
+      'UCkWQ0gDrqOCarmUKmppD7GQ', // The Economist
+      'UCJ7wYCT7aBRnr7_EO-UJx9Q', // New Statesman
+      'UC7_l_Bhu-V3OvFhYxDYOj7A', // SpectatorTV
+      'UCNAf1k0yIjyGu3k9BwAg3lg', // Sky Sports
+      'UCw6SJIJx-TYz6YBK2lVLCqw', // TNT Sports
+      'UC_VhdOOEVKM5tXjF5B8e0Aw', // BBC Sport
+      'UC4k8iTGOUBaKCRa4PKvJ4pw', // talkSPORT
+      'UCQvQ8LPxhq7TzUpRFPAJGdQ'  // The Football Terrace
     ]
     
     for (const channelId of priorityChannels) {
@@ -630,7 +652,7 @@ async function fetchYouTube(category: string, pageSize: number) {
       channelUrl.searchParams.set('q', searchQuery)
       channelUrl.searchParams.set('type', 'video')
       channelUrl.searchParams.set('order', 'date')
-      channelUrl.searchParams.set('maxResults', '3')
+      channelUrl.searchParams.set('maxResults', '2')
       channelUrl.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString())
       channelUrl.searchParams.set('relevanceLanguage', 'en')
       channelUrl.searchParams.set('regionCode', 'GB')
