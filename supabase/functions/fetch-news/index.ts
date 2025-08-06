@@ -538,13 +538,19 @@ async function fetchMediastack(category: string, pageSize: number) {
 }
 
 async function fetchYouTube(category: string, pageSize: number) {
+  console.log('=== FETCH YOUTUBE CALLED ===')
+  console.log(`Category: ${category}, PageSize: ${pageSize}`)
+  
   const apiKey = Deno.env.get('YOUTUBE_API_KEY')
+  console.log(`YouTube API key exists: ${!!apiKey}`)
+  console.log(`YouTube API key length: ${apiKey?.length || 0}`)
+  
   if (!apiKey) {
-    console.error('YouTube API key not configured, skipping YouTube videos')
+    console.error('=== NO YOUTUBE API KEY FOUND ===')
     return []
   }
   
-  console.log('YouTube API key found, proceeding with video fetch...')
+  console.log('=== YOUTUBE API KEY FOUND, PROCEEDING ===')
 
   // Map categories to simplified search queries
   const searchQueries: { [key: string]: string } = {
