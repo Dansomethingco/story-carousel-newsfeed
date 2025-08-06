@@ -265,7 +265,7 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
           }
         }
       }
-      
+
       // Only use image if it exists and is a valid URL, otherwise set to null
       let imageUrl = null;
       if (article.urlToImage && article.urlToImage.trim() && article.urlToImage.startsWith('http')) {
@@ -286,8 +286,19 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
       }
     })
   )
-  
-  return articles
+
+  // Filter out articles with insufficient content (likely behind paywalls)
+  const filteredArticles = articles.filter(article => {
+    const hasTitle = article.title && article.title !== 'Untitled' && article.title.length > 10
+    const hasContent = article.content && article.content.length > 100
+    const hasSummary = article.summary && article.summary.length > 20
+    
+    // Article must have a proper title and either substantial content or a good summary
+    return hasTitle && (hasContent || hasSummary)
+  })
+
+  console.log(`Filtered ${articles.length - filteredArticles.length} articles with insufficient content`)
+  return filteredArticles
 }
 
 async function fetchPAMedia(category: string, pageSize: number) {
@@ -480,8 +491,7 @@ async function fetchMediastack(category: string, pageSize: number) {
 
     const articles = data.data || []
     
-    return articles.map((article: any, index: number) => {
-      // Map Mediastack categories back to our frontend categories
+    const processedArticles = articles.map((article: any, index: number) => {
       let mappedCategory = category;
       if (mediastackCategory === 'sports') {
         mappedCategory = 'sport';
@@ -506,6 +516,19 @@ async function fetchMediastack(category: string, pageSize: number) {
         isVideo: false
       }
     })
+    
+    // Filter out articles with insufficient content (likely behind paywalls)
+    const filteredArticles = processedArticles.filter(article => {
+      const hasTitle = article.title && article.title !== 'Untitled' && article.title.length > 10
+      const hasContent = article.content && article.content.length > 100
+      const hasSummary = article.summary && article.summary.length > 20
+      
+      // Article must have a proper title and either substantial content or a good summary
+      return hasTitle && (hasContent || hasSummary)
+    })
+
+    console.log(`Mediastack: Filtered ${processedArticles.length - filteredArticles.length} articles with insufficient content`)
+    return filteredArticles
     
   } catch (error) {
     console.error('Error fetching Mediastack articles:', error)

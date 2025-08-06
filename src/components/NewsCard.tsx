@@ -124,15 +124,9 @@ export const NewsCard = ({ article }: NewsCardProps) => {
         )}
 
         {/* Content Preview */}
-        {article.content ? (
-          <div className="text-foreground leading-relaxed text-sm md:text-base line-clamp-6">
-            {article.content}
-          </div>
-        ) : (
-          <div className="text-muted-foreground leading-relaxed text-sm md:text-base italic">
-            Content not available - article may be behind a paywall or require subscription.
-          </div>
-        )}
+        <div className="text-foreground leading-relaxed text-sm md:text-base line-clamp-6">
+          {article.content}
+        </div>
       </div>
     </div>
   );
