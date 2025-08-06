@@ -601,11 +601,11 @@ async function fetchYouTube(category: string, pageSize: number) {
     const url = new URL('https://www.googleapis.com/youtube/v3/search')
     url.searchParams.set('key', apiKey)
     url.searchParams.set('part', 'snippet')
-    url.searchParams.set('q', 'UK news today')
+    url.searchParams.set('q', 'news')
     url.searchParams.set('type', 'video')
-    url.searchParams.set('order', 'date')
-    url.searchParams.set('maxResults', '3')
-    url.searchParams.set('publishedAfter', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours for testing
+    url.searchParams.set('order', 'relevance')
+    url.searchParams.set('maxResults', '5')
+    url.searchParams.set('publishedAfter', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
     url.searchParams.set('relevanceLanguage', 'en')
     url.searchParams.set('regionCode', 'GB')
     
