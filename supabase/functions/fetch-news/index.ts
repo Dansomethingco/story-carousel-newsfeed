@@ -56,7 +56,6 @@ Deno.serve(async (req) => {
       console.log(`Successfully fetched ${youtubeArticles.length} YouTube videos`)
     } else {
       console.error('YouTube failed:', youtubeData.reason)
-      console.error('YouTube error details:', JSON.stringify(youtubeData.reason))
     }
     
     // Intertwine articles - mix all four sources
@@ -538,24 +537,15 @@ async function fetchMediastack(category: string, pageSize: number) {
 }
 
 async function fetchYouTube(category: string, pageSize: number) {
-  console.log('=== FETCH YOUTUBE CALLED ===')
-  console.log(`Category: ${category}, PageSize: ${pageSize}`)
-  
   const apiKey = Deno.env.get('YOUTUBE_API_KEY')
-  console.log(`YouTube API key exists: ${!!apiKey}`)
-  console.log(`YouTube API key length: ${apiKey?.length || 0}`)
-  
   if (!apiKey) {
-    console.error('=== NO YOUTUBE API KEY FOUND ===')
+    console.log('YouTube API key not configured, skipping YouTube videos')
     return []
   }
-  
-  console.log('=== YOUTUBE API KEY FOUND, PROCEEDING ===')
 
   // Map categories to simplified search queries
   const searchQueries: { [key: string]: string } = {
     'all': 'breaking news',
-    'general': 'breaking news', // Add general category mapping
     'sport': 'sports news',
     'business': 'business news',
     'politics': 'politics news',
@@ -594,82 +584,89 @@ async function fetchYouTube(category: string, pageSize: number) {
   const searchQuery = searchQueries[category] || searchQueries['all']
   
   try {
-    console.log(`=== YOUTUBE DEBUG START ===`)
-    console.log(`Category: ${category}, SearchQuery: ${searchQuery}, PageSize: ${pageSize}`)
+    console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
     
-    // Ultra-simplified test - just get any recent UK news videos
-    const url = new URL('https://www.googleapis.com/youtube/v3/search')
-    url.searchParams.set('key', apiKey)
-    url.searchParams.set('part', 'snippet')
-    url.searchParams.set('q', 'news')
-    url.searchParams.set('type', 'video')
-    url.searchParams.set('order', 'relevance')
-    url.searchParams.set('maxResults', '5')
-    url.searchParams.set('publishedAfter', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
-    url.searchParams.set('relevanceLanguage', 'en')
-    url.searchParams.set('regionCode', 'GB')
+    // First try searching from specific UK news channels
+    let allVideos = []
     
-    console.log('=== YOUTUBE API CALL ===')
-    console.log('YouTube URL (without key):', url.toString().replace(apiKey, '[REDACTED]'))
-
-    const response = await fetch(url.toString())
+    // Try to get videos from major UK news channels first
+    const priorityChannels = [
+      'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
+      'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
+      'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
+      'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
+    ]
     
-    console.log(`=== YOUTUBE RESPONSE ===`)
-    console.log(`Response status: ${response.status}`)
-    console.log(`Response ok: ${response.ok}`)
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`=== YOUTUBE API FAILED ===`)
-      console.error(`Status: ${response.status} ${response.statusText}`)
-      console.error(`Error response body: ${errorText}`)
-      console.error(`Request URL domain: supabase.co (edge function)`)
-      console.error(`This might be an API key restriction issue!`)
-      return []
+    // Try each priority channel individually
+    for (const channelId of priorityChannels) {
+      if (allVideos.length >= pageSize) break
+      
+      const url = new URL('https://www.googleapis.com/youtube/v3/search')
+      url.searchParams.set('key', apiKey)
+      url.searchParams.set('part', 'snippet')
+      url.searchParams.set('q', searchQuery)
+      url.searchParams.set('type', 'video')
+      url.searchParams.set('order', 'date')
+      url.searchParams.set('maxResults', '2') // Get 2 videos per priority channel
+      url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
+      url.searchParams.set('relevanceLanguage', 'en')
+      url.searchParams.set('regionCode', 'GB')
+      url.searchParams.set('channelId', channelId)
+      
+      try {
+        const response = await fetch(url.toString())
+        if (response.ok) {
+          const data = await response.json()
+          const videos = data.items || []
+          allVideos.push(...videos)
+        }
+      } catch (err) {
+        console.log(`Failed to fetch from channel ${channelId}:`, err)
+      }
     }
-
-    const data = await response.json()
-    console.log(`=== YOUTUBE DATA ===`)
-    console.log(`Has error: ${!!data.error}`)
-    console.log(`Items count: ${data.items?.length || 0}`)
     
-    if (data.error) {
-      console.error(`=== YOUTUBE API ERROR ===`)
-      console.error(`Error: ${JSON.stringify(data.error)}`)
-      return []
+    // If we don't have enough videos, do a general search
+    if (allVideos.length < pageSize) {
+      const url = new URL('https://www.googleapis.com/youtube/v3/search')
+      url.searchParams.set('key', apiKey)
+      url.searchParams.set('part', 'snippet')
+      url.searchParams.set('q', searchQuery)
+      url.searchParams.set('type', 'video')
+      url.searchParams.set('order', 'date')
+      url.searchParams.set('maxResults', (pageSize - allVideos.length).toString())
+      url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
+      url.searchParams.set('relevanceLanguage', 'en')
+      url.searchParams.set('regionCode', 'GB')
+      
+      console.log('YouTube general search URL:', url.toString().replace(apiKey, '[REDACTED]'))
+
+      const response = await fetch(url.toString())
+      
+      if (response.ok) {
+        const data = await response.json()
+        const videos = data.items || []
+        allVideos.push(...videos)
+      }
     }
-
-    if (!data.items || data.items.length === 0) {
-      console.log('=== NO YOUTUBE VIDEOS FOUND ===')
-      return []
-    }
-
-    console.log(`=== PROCESSING ${data.items.length} VIDEOS ===`)
     
-    // Just return first video for testing, no complex filtering
-    const testVideo = data.items[0]
-    const result = [{
-      id: `youtube-test-${Date.now()}`,
-      title: testVideo.snippet.title || 'Test Video',
-      summary: testVideo.snippet.description ? testVideo.snippet.description.substring(0, 200) + '...' : 'Test video summary',
-      content: testVideo.snippet.description || 'Test video content',
-      image: testVideo.snippet.thumbnails?.high?.url || testVideo.snippet.thumbnails?.medium?.url,
-      source: testVideo.snippet.channelTitle || 'YouTube',
-      category: category,
-      publishedAt: testVideo.snippet.publishedAt || new Date().toISOString(),
-      readTime: '2:30',
-      isVideo: true,
-      videoId: testVideo.id.videoId,
-      embedUrl: `https://www.youtube.com/embed/${testVideo.id.videoId}`,
-      videoThumbnail: testVideo.snippet.thumbnails?.high?.url || testVideo.snippet.thumbnails?.medium?.url
-    }]
+    console.log(`Found ${allVideos.length} YouTube videos total`)
     
-    console.log(`=== YOUTUBE RETURNING ${result.length} VIDEOS ===`)
-    console.log(`Video title: ${result[0].title}`)
-    console.log(`Video ID: ${result[0].videoId}`)
-    console.log(`=== YOUTUBE DEBUG END ===`)
+    // Filter out non-English videos
+    const englishVideos = allVideos.filter((video: any) => {
+      const title = video.snippet.title || ''
+      const description = video.snippet.description || ''
+      
+      // Check if title contains only English characters (Latin alphabet, numbers, common punctuation)
+      const englishRegex = /^[a-zA-Z0-9\s\-_.,!?:;'"()\[\]{}@#$%&*+=|\\/<>~`^]*$/
+      const isEnglishTitle = englishRegex.test(title)
+      
+      // Additional check for common non-English patterns
+      const hasNonEnglishChars = /[\u0080-\uFFFF]/.test(title + description)
+      
+      return isEnglishTitle && !hasNonEnglishChars
+    })
     
-    return result
+    console.log(`Filtered to ${englishVideos.length} English-only videos`)
     
     // Get additional video details including duration for English videos only
     const videoIds = englishVideos.map((video: any) => video.id.videoId).join(',')
