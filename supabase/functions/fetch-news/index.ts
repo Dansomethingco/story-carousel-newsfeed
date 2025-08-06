@@ -266,12 +266,18 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
         }
       }
       
+      // Only use image if it exists and is a valid URL, otherwise set to null
+      let imageUrl = null;
+      if (article.urlToImage && article.urlToImage.trim() && article.urlToImage.startsWith('http')) {
+        imageUrl = article.urlToImage;
+      }
+      
       return {
         id: `news-${Date.now()}-${index}`,
         title: article.title || 'Untitled',
         summary: article.description || '',
         content: fullContent,
-        image: article.urlToImage || `https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=800&h=400&fit=crop`,
+        image: imageUrl,
         source: article.source?.name || 'Unknown Source',
         category: category,
         publishedAt: article.publishedAt || new Date().toISOString(),
