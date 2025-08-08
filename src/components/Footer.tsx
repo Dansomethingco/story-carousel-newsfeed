@@ -19,13 +19,13 @@ export const Footer = () => {
               to="/" 
               className="text-foreground hover:text-accent transition-colors font-medium"
             >
-              Feed
+              feed
             </Link>
             <Link 
               to="/about" 
               className="text-foreground hover:text-accent transition-colors font-medium"
             >
-              About
+              about
             </Link>
           </nav>
         </div>
