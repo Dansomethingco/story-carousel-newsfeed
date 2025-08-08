@@ -3,6 +3,7 @@ import { CategoryNav } from "./CategoryNav";
 import { NewsCarousel } from "./NewsCarousel";
 import { SignupPopup } from "./SignupPopup";
 import { PullToRefresh } from "./PullToRefresh";
+import { Footer } from "./Footer";
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -207,6 +208,8 @@ export const NewsApp = () => {
 
       {/* Signup Popup */}
       <SignupPopup />
+      
+      <Footer />
     </div>
   );
 };
