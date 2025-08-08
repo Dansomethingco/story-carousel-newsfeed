@@ -1,5 +1,5 @@
 import { Footer } from "@/components/Footer";
-import { Instagram, Linkedin } from "lucide-react";
+import { Instagram, Linkedin, Mail } from "lucide-react";
 
 const About = () => {
   return (
@@ -76,6 +76,17 @@ const About = () => {
                   <span>LinkedIn</span>
                 </a>
               </div>
+            </section>
+            
+            <section className="pt-8">
+              <h2 className="text-2xl font-semibold text-foreground mb-4">Contact Us</h2>
+              <a
+                href="mailto:dan.somethingco@gmail.com"
+                className="flex items-center space-x-2 text-muted-foreground hover:text-accent transition-colors"
+              >
+                <Mail size={20} />
+                <span>dan.somethingco@gmail.com</span>
+              </a>
             </section>
           </div>
         </div>
