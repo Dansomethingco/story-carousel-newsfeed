@@ -1,4 +1,5 @@
 import { Footer } from "@/components/Footer";
+import { Instagram, Linkedin } from "lucide-react";
 
 const About = () => {
   return (
@@ -51,6 +52,30 @@ const About = () => {
               <p className="text-muted-foreground leading-relaxed">
                 Keep up with the latest developments in your areas of interest. Whether you're following breaking news, sports updates, market trends, or technology innovations, Today brings you the stories that matter most.
               </p>
+            </section>
+            
+            <section className="pt-8 border-t border-border">
+              <h2 className="text-2xl font-semibold text-foreground mb-4">Follow Us</h2>
+              <div className="flex items-center space-x-4">
+                <a
+                  href="https://www.instagram.com/?next=%2F&hl=en"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 text-muted-foreground hover:text-accent transition-colors"
+                >
+                  <Instagram size={20} />
+                  <span>Instagram</span>
+                </a>
+                <a
+                  href="https://linkedin.com/companytodaysomethingco"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 text-muted-foreground hover:text-accent transition-colors"
+                >
+                  <Linkedin size={20} />
+                  <span>LinkedIn</span>
+                </a>
+              </div>
             </section>
           </div>
         </div>
