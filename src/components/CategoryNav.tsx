@@ -14,7 +14,7 @@ export const CategoryNav = ({ categories, activeCategory, onCategoryChange }: Ca
           key={category}
           variant={activeCategory === category ? "default" : "secondary"}
           onClick={() => onCategoryChange(category)}
-          className={`flex-1 px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+          className={`flex-1 px-6 py-2 rounded-full text-base font-medium transition-all duration-200 ${
             activeCategory === category 
               ? "bg-primary text-primary-foreground" 
               : "bg-secondary hover:bg-secondary/80 text-secondary-foreground"
