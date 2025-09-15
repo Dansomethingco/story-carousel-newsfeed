@@ -8,9 +8,21 @@ Deno.serve(async (req) => {
 
   try {
     const { category = 'general', country = 'us', pageSize = 20, searchQuery } = await req.json()
+
+    // Normalize frontend categories to backend categories
+    const categoryMap: { [key: string]: string } = {
+      'finance': 'business',
+      'football': 'sports',
+      'business': 'business',
+      'sports': 'sports',
+      'general': 'general',
+      'all': 'general'
+    }
+
+    const normalizedCategory = categoryMap[category] || category
     
     console.log('=== FETCH NEWS STARTED ===')
-    console.log('Category:', category, 'Country:', country, 'PageSize:', pageSize)
+    console.log(`Original Category: ${category} -> Normalized: ${normalizedCategory} | Country: ${country} | PageSize: ${pageSize}`)
     if (searchQuery) {
       console.log('Search Query:', searchQuery)
     }
@@ -18,11 +30,11 @@ Deno.serve(async (req) => {
     // Fetch from NewsAPI, YouTube, and Google Search in parallel (PA Media and Mediastack disabled due to API failures)
     console.log('Starting parallel fetch from NewsAPI, YouTube, and Google Search...')
     const [newsApiData, paMediaData, mediastackData, youtubeData, googleSearchData] = await Promise.allSettled([
-      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.4), searchQuery), // 40% from NewsAPI 
-      fetchPAMedia(category, 0), // 0% from PA Media (disabled due to API failures)
-      fetchMediastack(category, 0), // 0% from Mediastack (disabled due to rate limiting)
-      fetchYouTube(category, Math.ceil(pageSize * 0.3), searchQuery), // 30% from YouTube
-      fetchGoogleCustomSearch(category, Math.ceil(pageSize * 0.2), searchQuery) // 20% from Google Search
+      fetchNewsAPI(normalizedCategory, country, Math.ceil(pageSize * 0.4), searchQuery), // 40% from NewsAPI 
+      fetchPAMedia(normalizedCategory, 0), // 0% from PA Media (disabled due to API failures)
+      fetchMediastack(normalizedCategory, 0), // 0% from Mediastack (disabled due to rate limiting)
+      fetchYouTube(normalizedCategory, Math.ceil(pageSize * 0.3), searchQuery), // 30% from YouTube
+      fetchGoogleCustomSearch(normalizedCategory, Math.ceil(pageSize * 0.2), searchQuery) // 20% from Google Search
     ])
     
     let newsApiArticles: any[] = []
@@ -216,11 +228,13 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number,
     throw new Error('NewsAPI key not configured')
   }
 
-  // Map frontend categories to NewsAPI categories
+  console.log(`NewsAPI: Processing category "${category}" for ${pageSize} articles`)
+
+  // Map normalized categories to NewsAPI categories
   const categoryMapping: { [key: string]: string } = {
-    'all': 'general',
+    'general': 'general',
     'business': 'business',
-    'sport': 'sports',
+    'sports': 'sports',
     'politics': 'general',
     'technology': 'technology',
     'entertainment': 'entertainment'
@@ -332,11 +346,14 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number,
 }
 
 async function fetchPAMedia(category: string, pageSize: number) {
+  console.log(`PA Media: Processing category "${category}" for ${pageSize} articles`)
+
+  // Map normalized categories to PA Media categories
   const categoryMapping: { [key: string]: string } = {
-    'sport': 'sport',
+    'sports': 'sport',
     'entertainment': 'entertainment', 
     'business': 'finance',
-    'all': '',
+    'general': '',
     'politics': '', 
     'technology': ''
   }
@@ -481,11 +498,13 @@ async function fetchMediastack(category: string, pageSize: number) {
     return []
   }
 
-  // Map frontend categories to Mediastack categories
+  console.log(`Mediastack: Processing category "${category}" for ${pageSize} articles`)
+
+  // Map normalized categories to Mediastack categories
   const categoryMapping: { [key: string]: string } = {
-    'all': 'general',
+    'general': 'general',
     'business': 'business',
-    'sport': 'sports',
+    'sports': 'sports',
     'technology': 'technology',
     'entertainment': 'entertainment'
   }
@@ -493,7 +512,7 @@ async function fetchMediastack(category: string, pageSize: number) {
   const mediastackCategory = categoryMapping[category] || 'general'
   
   try {
-    console.log(`Fetching Mediastack articles for category: ${category}`)
+    console.log(`Fetching Mediastack articles for category: ${category} -> ${mediastackCategory}`)
     
     const url = new URL('https://api.mediastack.com/v1/news')
     url.searchParams.set('access_key', apiKey)
@@ -573,10 +592,12 @@ async function fetchYouTube(category: string, pageSize: number, searchQuery?: st
     return []
   }
 
-  // Map categories to specific search queries
+  console.log(`YouTube: Processing category "${category}" for ${pageSize} videos`)
+
+  // Map normalized categories to specific search queries
   const searchQueries: { [key: string]: string } = {
-    'all': 'breaking news',
-    'sport': 'sports news',
+    'general': 'breaking news',
+    'sports': 'sports news',
     'business': 'finance OR "stock market" OR "financial markets" OR investing OR economy',
     'politics': 'politics news',
     'technology': 'technology news',
@@ -627,7 +648,7 @@ async function fetchYouTube(category: string, pageSize: number, searchQuery?: st
   const newsChannels = getChannelsForCategory(category)
 
   // Use custom search query if provided, otherwise use category-based query
-  const finalSearchQuery = searchQuery || searchQueries[category] || searchQueries['all']
+  const finalSearchQuery = searchQuery || searchQueries[category] || searchQueries['general']
   
   try {
     console.log(`Fetching YouTube videos for category: ${category} with query: ${finalSearchQuery}`)
@@ -793,12 +814,13 @@ async function fetchGoogleCustomSearch(category: string, pageSize: number, searc
     return []
   }
 
-  // Map categories to Google search queries
+  console.log(`Google Search: Processing category "${category}" for ${pageSize} articles`)
+
+  // Map normalized categories to Google search queries
   const categoryMapping: { [key: string]: string } = {
-    'all': 'news',
+    'general': 'news',
     'business': 'finance business news',
-    'sport': 'sports news',
-    'football': 'football soccer news',
+    'sports': 'sports news',
     'politics': 'politics government news',
     'technology': 'technology tech news',
     'entertainment': 'entertainment celebrity news'
