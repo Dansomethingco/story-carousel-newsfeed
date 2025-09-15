@@ -249,9 +249,9 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number,
   
   if (useKeywords) {
     if (searchQuery) {
-      // Use custom search query (for finance subcategories)
-      finalSearchQuery = searchQuery
-      domains = 'bloomberg.com,cnbc.com,marketwatch.com,reuters.com,ft.com,wsj.com,forbes.com,businessinsider.com'
+      // Enhanced search query processing for finance subcategories
+      finalSearchQuery = enhanceFinanceSearchQuery(searchQuery)
+      domains = 'bloomberg.com,cnbc.com,marketwatch.com,reuters.com,ft.com,wsj.com,forbes.com,businessinsider.com,morningstar.com,seekingalpha.com'
     } else if (category === 'politics') {
       finalSearchQuery = 'politics OR government OR election OR congress OR senate'
       domains = 'bbc.com,cnn.com,reuters.com,apnews.com,npr.org'
@@ -343,6 +343,31 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number,
 
   console.log(`Filtered ${articles.length - filteredArticles.length} articles with insufficient content`)
   return filteredArticles
+}
+
+// Enhanced finance search query processing
+function enhanceFinanceSearchQuery(searchQuery: string): string {
+  // If it's already a specific finance search query, return as-is but optimized
+  if (searchQuery.includes('stocks OR') || searchQuery.includes('cryptocurrency OR')) {
+    return searchQuery
+  }
+  
+  // Map simple terms to more comprehensive search queries
+  const enhancementMap: { [key: string]: string } = {
+    'stocks': 'stocks OR shares OR equity OR "stock market" OR "equity trading" OR "stock price" OR "stock analysis" OR "earnings report" OR "dividend" OR "market performance" OR "stock index" OR NYSE OR NASDAQ',
+    'crypto': 'cryptocurrency OR bitcoin OR ethereum OR "crypto market" OR "digital currency" OR "crypto price" OR "crypto trading" OR "blockchain market" OR "crypto exchange" OR "crypto regulation" OR "crypto adoption" OR "crypto news"',
+    'business': 'corporate OR "business strategy" OR "company earnings" OR "business expansion" OR "corporate restructuring" OR "business partnerships" OR "industry trends" OR "business innovation" OR "corporate governance" OR "business operations" OR "company merger" OR "business acquisition"',
+    'global trade': 'international trade OR "trade agreement" OR "trade policy" OR "trade deal" OR "trade war" OR "trade relationship" OR "import export" OR "trade dispute" OR "trade negotiations" OR "global commerce" OR "cross-border trade" OR "trade deficit" OR "trade surplus"'
+  }
+  
+  // Check if the search query matches any of our enhanced terms
+  for (const [key, enhancedQuery] of Object.entries(enhancementMap)) {
+    if (searchQuery.toLowerCase().includes(key)) {
+      return enhancedQuery
+    }
+  }
+  
+  return searchQuery
 }
 
 async function fetchPAMedia(category: string, pageSize: number) {
@@ -603,6 +628,9 @@ async function fetchYouTube(category: string, pageSize: number, searchQuery?: st
     'technology': 'technology news',
     'entertainment': 'entertainment news'
   }
+  
+  // Enhanced search query processing for finance subcategories
+  const enhancedSearchQuery = searchQuery ? enhanceFinanceSearchQueryForYouTube(searchQuery) : null
 
   // Target news channels, with finance-specific channels for business category
   const getChannelsForCategory = (cat: string) => {
@@ -647,8 +675,8 @@ async function fetchYouTube(category: string, pageSize: number, searchQuery?: st
 
   const newsChannels = getChannelsForCategory(category)
 
-  // Use custom search query if provided, otherwise use category-based query
-  const finalSearchQuery = searchQuery || searchQueries[category] || searchQueries['general']
+  // Use enhanced search query if provided, otherwise use category-based query
+  const finalSearchQuery = enhancedSearchQuery || searchQueries[category] || searchQueries['general']
   
   try {
     console.log(`Fetching YouTube videos for category: ${category} with query: ${finalSearchQuery}`)
@@ -789,6 +817,26 @@ async function fetchYouTube(category: string, pageSize: number, searchQuery?: st
   }
 }
 
+// Enhanced finance search query processing for YouTube
+function enhanceFinanceSearchQueryForYouTube(searchQuery: string): string {
+  // Map finance subcategories to YouTube-optimized search queries
+  const youtubeEnhancementMap: { [key: string]: string } = {
+    'stocks': 'stock market analysis OR stock picks OR earnings report OR stock news OR market outlook OR equity research OR dividend stocks OR stock trading',
+    'crypto': 'cryptocurrency news OR bitcoin analysis OR crypto market OR crypto trading OR blockchain news OR crypto price prediction OR ethereum news OR crypto updates',
+    'business': 'business news OR corporate earnings OR CEO interview OR company analysis OR industry trends OR business strategy OR corporate governance OR business updates',
+    'global trade': 'international trade OR trade war OR trade agreement OR global economy OR trade policy OR import export OR trade relations OR global business'
+  }
+  
+  // Check if the search query matches any of our enhanced terms
+  for (const [key, enhancedQuery] of Object.entries(youtubeEnhancementMap)) {
+    if (searchQuery.toLowerCase().includes(key)) {
+      return enhancedQuery
+    }
+  }
+  
+  return searchQuery
+}
+
 // Helper function to parse YouTube duration format (PT4M13S -> 4:13)
 function parseDuration(duration: string): string {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
@@ -829,8 +877,9 @@ async function fetchGoogleCustomSearch(category: string, pageSize: number, searc
   let finalSearchQuery = ''
   
   if (searchQuery) {
-    // Use custom search query (for subcategories like finance types or football teams)
-    finalSearchQuery = `${searchQuery} news`
+    // Enhanced search query processing for finance subcategories
+    const enhancedQuery = enhanceFinanceSearchQueryForGoogle(searchQuery)
+    finalSearchQuery = `${enhancedQuery} news`
   } else {
     finalSearchQuery = categoryMapping[category] || 'news'
   }
@@ -937,4 +986,24 @@ async function fetchGoogleCustomSearch(category: string, pageSize: number, searc
     console.error('Error fetching Google Custom Search:', error)
     return []
   }
+}
+
+// Enhanced finance search query processing for Google Custom Search
+function enhanceFinanceSearchQueryForGoogle(searchQuery: string): string {
+  // Map finance subcategories to Google-optimized search queries
+  const googleEnhancementMap: { [key: string]: string } = {
+    'stocks': 'stock market OR equity market OR stock analysis OR share price OR stock trading OR market performance OR earnings',
+    'crypto': 'cryptocurrency OR bitcoin OR ethereum OR crypto market OR digital currency OR blockchain OR crypto trading OR crypto price',
+    'business': 'corporate news OR business strategy OR company earnings OR corporate governance OR business operations OR industry analysis',
+    'global trade': 'international trade OR trade agreement OR trade policy OR global commerce OR trade relations OR import export OR trade deficit'
+  }
+  
+  // Check if the search query matches any of our enhanced terms
+  for (const [key, enhancedQuery] of Object.entries(googleEnhancementMap)) {
+    if (searchQuery.toLowerCase().includes(key)) {
+      return enhancedQuery
+    }
+  }
+  
+  return searchQuery
 }

@@ -112,16 +112,16 @@ export const NewsApp = () => {
               let searchQuery = "";
               switch (subcat) {
                 case "stocks":
-                  searchQuery = "stocks OR shares OR equity OR \"stock market\" OR NYSE OR NASDAQ OR \"S&P 500\" OR \"Dow Jones\" OR indices OR trading OR CFDs";
+                  searchQuery = "stocks";
                   break;
                 case "crypto":
-                  searchQuery = "cryptocurrency OR bitcoin OR ethereum OR crypto OR blockchain OR \"digital currency\" OR \"crypto trading\"";
+                  searchQuery = "crypto";
                   break;
                 case "business":
-                  searchQuery = "business OR corporate OR company OR enterprise OR earnings OR revenue OR \"quarterly results\" OR IPO OR merger";
+                  searchQuery = "business";
                   break;
                 case "global trade":
-                  searchQuery = "trade OR import OR export OR tariff OR \"international trade\" OR \"global commerce\" OR \"trade deals\"";
+                  searchQuery = "global trade";
                   break;
               }
               
@@ -171,16 +171,16 @@ export const NewsApp = () => {
             if (activeFinanceSubcategory !== "all") {
               switch (activeFinanceSubcategory) {
                 case "stocks":
-                  searchQuery = "stocks OR shares OR equity OR \"stock market\" OR NYSE OR NASDAQ OR \"S&P 500\" OR \"Dow Jones\" OR indices OR trading OR CFDs OR \"futures market\" OR \"options trading\" OR \"market volatility\" OR \"bull market\" OR \"bear market\"";
+                  searchQuery = "stocks";
                   break;
                 case "crypto":
-                  searchQuery = "cryptocurrency OR bitcoin OR ethereum OR crypto OR blockchain OR \"digital currency\" OR \"crypto trading\" OR altcoin OR \"DeFi\" OR \"NFT\" OR \"Web3\" OR \"crypto market\" OR \"bitcoin price\" OR \"ethereum price\"";
+                  searchQuery = "crypto";
                   break;
                 case "business":
-                  searchQuery = "business OR corporate OR company OR enterprise OR earnings OR revenue OR \"quarterly results\" OR IPO OR merger OR acquisition OR \"business news\" OR CEO OR \"corporate strategy\" OR startup OR \"market share\"";
+                  searchQuery = "business";
                   break;
                 case "global trade":
-                  searchQuery = "trade OR import OR export OR tariff OR \"international trade\" OR \"global commerce\" OR \"trade deals\" OR \"trade war\" OR \"supply chain\" OR \"trade agreement\" OR \"customs\" OR \"trade deficit\" OR \"trade surplus\"";
+                  searchQuery = "global trade";
                   break;
               }
             }
