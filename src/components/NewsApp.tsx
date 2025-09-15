@@ -13,6 +13,7 @@ import newsHero from "@/assets/news-hero.jpg";
 import sportsNews from "@/assets/sports-news.jpg";
 import f1News from "@/assets/f1-news.jpg";
 import politicsNews from "@/assets/politics-news.jpg";
+import financeLogo from "@/assets/finance-logo.svg";
 
 interface NewsArticle {
   id: string;
@@ -82,7 +83,7 @@ const mockArticles: NewsArticle[] = [
   }
 ];
 
-const categories = ["all", "business", "sport", "politics", "technology", "entertainment"];
+const categories = ["all", "finance", "sport", "politics", "technology", "entertainment"];
 
 export const NewsApp = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
@@ -168,7 +169,7 @@ export const NewsApp = () => {
         <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <img 
-              src="/lovable-uploads/c6389b85-0967-4d79-8532-74f1d53b31f7.png" 
+              src={activeCategory === "finance" ? financeLogo : "/lovable-uploads/c6389b85-0967-4d79-8532-74f1d53b31f7.png"}
               alt="Today" 
               className="h-12 md:h-16 w-auto object-contain"
             />
