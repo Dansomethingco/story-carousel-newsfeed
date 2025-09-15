@@ -15,6 +15,9 @@ export const CategoryNav = ({ categories, activeCategory, onCategoryChange }: Ca
       if (category === "football") {
         return { backgroundColor: "#44e51b", color: "white" };
       }
+      if (category === "all") {
+        return { backgroundColor: "#eb473d", color: "white" };
+      }
     }
     return {};
   };
@@ -28,7 +31,7 @@ export const CategoryNav = ({ categories, activeCategory, onCategoryChange }: Ca
           onClick={() => onCategoryChange(category)}
           style={getButtonStyle(category)}
           className={`flex-1 px-6 py-2 rounded-full text-base font-medium transition-all duration-200 ${
-            activeCategory === category && (category === "finance" || category === "football")
+            activeCategory === category && (category === "finance" || category === "football" || category === "all")
               ? "" // Remove default styling when using custom colors
               : activeCategory === category 
               ? "bg-primary text-primary-foreground" 
