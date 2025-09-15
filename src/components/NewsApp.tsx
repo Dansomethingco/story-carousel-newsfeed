@@ -152,7 +152,9 @@ export const NewsApp = () => {
           }
         } else {
           // For specific categories
-          const category = activeCategory === "football" ? "sports" : activeCategory;
+          const category = activeCategory === "football" ? "sports" : 
+                          activeCategory === "finance" ? "business" : 
+                          activeCategory;
           
           const response = await supabase.functions.invoke('fetch-news', {
             body: { 
