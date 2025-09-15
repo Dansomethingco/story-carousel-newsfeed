@@ -114,37 +114,71 @@ export const NewsApp = () => {
       try {
         setLoading(true);
         
-        const category = activeCategory === "all" ? "general" : 
-                        activeCategory === "football" ? "sports" : 
-                        activeCategory;
-        
-        // Call unified fetch-news endpoint
-        const response = await supabase.functions.invoke('fetch-news', {
-          body: { 
-            category: category,
-            country: 'us',
-            pageSize: 20
+        if (activeCategory === "all") {
+          // For "all" category, fetch from multiple categories and combine
+          const categories = ["general", "business", "sports", "technology"];
+          const allArticles: NewsArticle[] = [];
+          
+          for (const cat of categories) {
+            try {
+              const response = await supabase.functions.invoke('fetch-news', {
+                body: { 
+                  category: cat,
+                  country: 'us',
+                  pageSize: 5 // Get fewer from each category to have variety
+                }
+              });
+              
+              if (response.data?.articles) {
+                allArticles.push(...response.data.articles);
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch ${cat} news:`, error);
+            }
           }
-        });
-
-        if (response.error) {
-          throw new Error(response.error.message || 'Failed to fetch news');
-        }
-
-        const data = response.data;
-        
-        if (data.articles && data.articles.length > 0) {
-          setArticles(data.articles);
-          console.log(`Successfully loaded ${data.articles.length} articles (mixed sources including YouTube)`);
+          
+          if (allArticles.length > 0) {
+            // Shuffle and limit to 20 articles for variety
+            const shuffled = allArticles.sort(() => Math.random() - 0.5).slice(0, 20);
+            setArticles(shuffled);
+            console.log(`Successfully loaded ${shuffled.length} articles from multiple categories`);
+          } else {
+            setArticles(mockArticles);
+            toast({
+              title: "Connection error",
+              description: "Unable to fetch latest news. Using cached articles.",
+              variant: "destructive",
+            });
+          }
         } else {
-          // Fallback to mock data if no articles received
-          console.warn('No articles received from API, using mock data');
-          toast({
-            title: "Connection error",
-            description: "Unable to fetch latest news. Using cached articles.",
-            variant: "destructive",
+          // For specific categories
+          const category = activeCategory === "football" ? "sports" : activeCategory;
+          
+          const response = await supabase.functions.invoke('fetch-news', {
+            body: { 
+              category: category,
+              country: 'us',
+              pageSize: 20
+            }
           });
-          setArticles(mockArticles);
+
+          if (response.error) {
+            throw new Error(response.error.message || 'Failed to fetch news');
+          }
+
+          const data = response.data;
+          
+          if (data.articles && data.articles.length > 0) {
+            setArticles(data.articles);
+            console.log(`Successfully loaded ${data.articles.length} articles for ${activeCategory}`);
+          } else {
+            setArticles(mockArticles);
+            toast({
+              title: "Connection error",
+              description: "Unable to fetch latest news. Using cached articles.",
+              variant: "destructive",
+            });
+          }
         }
         
       } catch (error) {
@@ -154,7 +188,6 @@ export const NewsApp = () => {
           description: "Unable to fetch latest news. Using cached articles.",
           variant: "destructive",
         });
-        // Fallback to mock data
         setArticles(mockArticles);
       } finally {
         setLoading(false);
