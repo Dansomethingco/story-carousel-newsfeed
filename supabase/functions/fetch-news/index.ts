@@ -339,15 +339,24 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number,
     
     // Basic content requirements
     const hasBasicContent = hasTitle && (hasContent || hasSummary)
-    if (!hasBasicContent) return false
+    if (!hasBasicContent) {
+      console.log(`Article filtered out for insufficient content: "${article.title}"`)
+      return false
+    }
     
     // If there's a specific search query, check relevance
     if (searchQuery && searchQuery.length > 5) {
-      return isArticleRelevantToQuery(article, searchQuery)
+      const isRelevant = isArticleRelevantToQuery(article, searchQuery)
+      if (!isRelevant) {
+        console.log(`Article filtered out for irrelevance to "${searchQuery}": "${article.title}"`)
+      }
+      return isRelevant
     }
     
     return true
   })
+  
+  console.log(`NewsAPI: Filtered ${articles.length - filteredArticles.length} irrelevant articles (${articles.length} -> ${filteredArticles.length})`)
 
   console.log(`Filtered ${articles.length - filteredArticles.length} articles with insufficient content`)
   return filteredArticles
@@ -360,12 +369,33 @@ function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
   const content = (article.content || '').toLowerCase()
   const combinedText = `${title} ${summary} ${content}`
   
+  console.log(`Checking relevance for: "${article.title}" against query: "${searchQuery}"`)
+  
+  // First, check for obvious irrelevant topics that should be blocked
+  const blockedTopics = [
+    'shooting', 'murder', 'crime', 'police', 'arrest', 'court', 'legal case', 'lawsuit',
+    'fashion week', 'plus-size', 'clothing', 'designer', 'runway', 'model',
+    'celebrity', 'awards', 'emmy', 'oscar', 'entertainment', 'movie', 'tv show',
+    'sports', 'football', 'basketball', 'soccer', 'baseball', 'hockey',
+    'politics', 'election', 'candidate', 'vote', 'congress', 'senate', 'political'
+  ]
+  
+  const hasBlockedContent = blockedTopics.some(topic => 
+    title.includes(topic) || summary.includes(topic)
+  )
+  
+  if (hasBlockedContent) {
+    console.log(`Article blocked for containing irrelevant topic: "${article.title}"`)
+    return false
+  }
+  
   // Define relevance keywords for each finance subcategory
   const relevanceMap: { [key: string]: string[] } = {
     'stocks': [
       'stock', 'stocks', 'share', 'shares', 'equity', 'trading', 'market', 'nasdaq', 'nyse', 
       'dow', 'sp500', 's&p', 'earnings', 'dividend', 'investor', 'analyst', 'price target',
-      'revenue', 'profit', 'financial', 'ticker', 'volatility', 'bull', 'bear', 'index'
+      'revenue', 'profit', 'financial', 'ticker', 'volatility', 'bull', 'bear', 'index',
+      'wall street', 'securities', 'portfolio', 'fund', 'etf', 'mutual fund'
     ],
     'crypto': [
       'crypto', 'bitcoin', 'ethereum', 'blockchain', 'cryptocurrency', 'digital currency',
@@ -386,14 +416,16 @@ function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
   
   // Determine which category this search query belongs to
   let relevantKeywords: string[] = []
+  let categoryFound = ''
   for (const [category, keywords] of Object.entries(relevanceMap)) {
     if (searchQuery.toLowerCase().includes(category)) {
       relevantKeywords = keywords
+      categoryFound = category
       break
     }
   }
   
-  // If no specific category match, use a general approach
+  // If no specific category match, try to match individual terms
   if (relevantKeywords.length === 0) {
     // Extract key terms from the search query
     const queryTerms = searchQuery.toLowerCase()
@@ -403,17 +435,26 @@ function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
     
     // Check if at least 2 query terms appear in the article
     const matchCount = queryTerms.filter(term => combinedText.includes(term)).length
-    return matchCount >= Math.min(2, queryTerms.length)
+    const isRelevant = matchCount >= Math.min(2, queryTerms.length)
+    console.log(`Generic relevance check: ${matchCount}/${queryTerms.length} terms matched (${isRelevant})`)
+    return isRelevant
   }
   
   // Check if article contains relevant keywords
-  const keywordMatches = relevantKeywords.filter(keyword => 
+  const matchedKeywords = relevantKeywords.filter(keyword => 
     combinedText.includes(keyword)
-  ).length
+  )
   
   // Require at least 2 relevant keywords for stocks/crypto, 1 for others
-  const minMatches = ['stocks', 'crypto'].some(cat => searchQuery.toLowerCase().includes(cat)) ? 2 : 1
-  return keywordMatches >= minMatches
+  const minMatches = ['stocks', 'crypto'].includes(categoryFound) ? 2 : 1
+  const isRelevant = matchedKeywords.length >= minMatches
+  
+  console.log(`Category: ${categoryFound}, Keywords matched: ${matchedKeywords.length}/${relevantKeywords.length} (need ${minMatches}), Relevant: ${isRelevant}`)
+  if (matchedKeywords.length > 0) {
+    console.log(`Matched keywords: ${matchedKeywords.slice(0, 3).join(', ')}`)
+  }
+  
+  return isRelevant
 }
 
 // Enhanced finance search query processing
@@ -1049,15 +1090,24 @@ async function fetchGoogleCustomSearch(category: string, pageSize: number, searc
       
       // Basic content requirements
       const hasBasicContent = hasTitle && hasSummary
-      if (!hasBasicContent) return false
+      if (!hasBasicContent) {
+        console.log(`Google Search article filtered out for insufficient content: "${article.title}"`)
+        return false
+      }
       
       // If there's a specific search query, check relevance
       if (searchQuery && searchQuery.length > 5) {
-        return isArticleRelevantToQuery(article, searchQuery)
+        const isRelevant = isArticleRelevantToQuery(article, searchQuery)
+        if (!isRelevant) {
+          console.log(`Google Search article filtered out for irrelevance to "${searchQuery}": "${article.title}"`)
+        }
+        return isRelevant
       }
       
       return true
     })
+    
+    console.log(`Google Search: Filtered ${articles.length - filteredArticles.length} irrelevant articles (${articles.length} -> ${filteredArticles.length})`)
 
     console.log(`Filtered ${articles.length - filteredArticles.length} Google Search results with insufficient content`)
     return filteredArticles
