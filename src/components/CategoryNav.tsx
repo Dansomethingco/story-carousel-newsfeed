@@ -10,7 +10,7 @@ export const CategoryNav = ({ categories, activeCategory, onCategoryChange }: Ca
   const getButtonStyle = (category: string) => {
     if (activeCategory === category) {
       if (category === "finance") {
-        return { backgroundColor: "#415185", color: "white" };
+        return { backgroundColor: "#003366", color: "white" };
       }
       if (category === "football") {
         return { backgroundColor: "#44e51b", color: "white" };
