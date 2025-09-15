@@ -15,19 +15,21 @@ Deno.serve(async (req) => {
       console.log('Search Query:', searchQuery)
     }
     
-    // Fetch from NewsAPI and YouTube in parallel (PA Media and Mediastack disabled due to API failures)
-    console.log('Starting parallel fetch from NewsAPI and YouTube...')
-    const [newsApiData, paMediaData, mediastackData, youtubeData] = await Promise.allSettled([
-      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.5), searchQuery), // 50% from NewsAPI 
+    // Fetch from NewsAPI, YouTube, and Google Search in parallel (PA Media and Mediastack disabled due to API failures)
+    console.log('Starting parallel fetch from NewsAPI, YouTube, and Google Search...')
+    const [newsApiData, paMediaData, mediastackData, youtubeData, googleSearchData] = await Promise.allSettled([
+      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.4), searchQuery), // 40% from NewsAPI 
       fetchPAMedia(category, 0), // 0% from PA Media (disabled due to API failures)
       fetchMediastack(category, 0), // 0% from Mediastack (disabled due to rate limiting)
-      fetchYouTube(category, Math.ceil(pageSize * 0.5), searchQuery) // 50% from YouTube
+      fetchYouTube(category, Math.ceil(pageSize * 0.3), searchQuery), // 30% from YouTube
+      fetchGoogleCustomSearch(category, Math.ceil(pageSize * 0.2), searchQuery) // 20% from Google Search
     ])
     
     let newsApiArticles: any[] = []
     let paMediaArticles: any[] = []
     let mediastackArticles: any[] = []
     let youtubeArticles: any[] = []
+    let googleSearchArticles: any[] = []
     
     // Process NewsAPI results
     if (newsApiData.status === 'fulfilled') {
@@ -61,26 +63,51 @@ Deno.serve(async (req) => {
       console.error('YouTube failed:', youtubeData.reason)
     }
     
-    // Intertwine articles - mix all four sources
+    // Process Google Search results
+    if (googleSearchData.status === 'fulfilled') {
+      googleSearchArticles = googleSearchData.value || []
+      console.log(`Successfully fetched ${googleSearchArticles.length} Google Search articles`)
+    } else {
+      console.error('Google Search failed:', googleSearchData.reason)
+    }
+    
+    // Intertwine articles - mix all five sources
     const interweavedArticles: any[] = []
     let newsIndex = 0
     let paIndex = 0
     let mediastackIndex = 0
     let youtubeIndex = 0
+    let googleIndex = 0
     
-    for (let i = 0; i < pageSize && (newsIndex < newsApiArticles.length || youtubeIndex < youtubeArticles.length); i++) {
-      // Alternate between NewsAPI (50%) and YouTube (50%)
-      if (i % 2 === 0 && newsIndex < newsApiArticles.length) {
+    for (let i = 0; i < pageSize; i++) {
+      // Distribute articles: NewsAPI (40%), YouTube (30%), Google Search (20%), others (10%)
+      const cyclePosition = i % 10
+      
+      if (cyclePosition < 4 && newsIndex < newsApiArticles.length) {
+        // 40% NewsAPI (positions 0-3)
         interweavedArticles.push(newsApiArticles[newsIndex])
         newsIndex++
-      } else if (youtubeIndex < youtubeArticles.length) {
+      } else if (cyclePosition < 7 && youtubeIndex < youtubeArticles.length) {
+        // 30% YouTube (positions 4-6)
         interweavedArticles.push(youtubeArticles[youtubeIndex])
         youtubeIndex++
+      } else if (cyclePosition < 9 && googleIndex < googleSearchArticles.length) {
+        // 20% Google Search (positions 7-8)
+        interweavedArticles.push(googleSearchArticles[googleIndex])
+        googleIndex++
       } 
       // Fill remaining positions with any available content
       else if (newsIndex < newsApiArticles.length) {
         interweavedArticles.push(newsApiArticles[newsIndex])
         newsIndex++
+      } else if (youtubeIndex < youtubeArticles.length) {
+        interweavedArticles.push(youtubeArticles[youtubeIndex])
+        youtubeIndex++
+      } else if (googleIndex < googleSearchArticles.length) {
+        interweavedArticles.push(googleSearchArticles[googleIndex])
+        googleIndex++
+      } else {
+        break // No more content available
       }
     }
     
@@ -89,7 +116,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         articles: interweavedArticles,
-        totalResults: newsApiArticles.length + paMediaArticles.length + mediastackArticles.length + youtubeArticles.length
+        totalResults: newsApiArticles.length + paMediaArticles.length + mediastackArticles.length + youtubeArticles.length + googleSearchArticles.length
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -754,5 +781,138 @@ function parseDuration(duration: string): string {
     return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   } else {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+}
+
+async function fetchGoogleCustomSearch(category: string, pageSize: number, searchQuery?: string) {
+  const apiKey = Deno.env.get('GOOGLE_CUSTOM_SEARCH_API_KEY')
+  const searchEngineId = Deno.env.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID')
+  
+  if (!apiKey || !searchEngineId) {
+    console.log('Google Custom Search API key or Search Engine ID not configured')
+    return []
+  }
+
+  // Map categories to Google search queries
+  const categoryMapping: { [key: string]: string } = {
+    'all': 'news',
+    'business': 'finance business news',
+    'sport': 'sports news',
+    'football': 'football soccer news',
+    'politics': 'politics government news',
+    'technology': 'technology tech news',
+    'entertainment': 'entertainment celebrity news'
+  }
+
+  let finalSearchQuery = ''
+  
+  if (searchQuery) {
+    // Use custom search query (for subcategories like finance types or football teams)
+    finalSearchQuery = `${searchQuery} news`
+  } else {
+    finalSearchQuery = categoryMapping[category] || 'news'
+  }
+
+  try {
+    console.log(`Fetching Google Custom Search for: ${finalSearchQuery}`)
+    
+    const url = new URL('https://www.googleapis.com/customsearch/v1')
+    url.searchParams.set('key', apiKey)
+    url.searchParams.set('cx', searchEngineId)
+    url.searchParams.set('q', finalSearchQuery)
+    url.searchParams.set('num', Math.min(pageSize, 10).toString()) // Google allows max 10 results per request
+    url.searchParams.set('dateRestrict', 'd1') // Last 24 hours for fresh news
+    url.searchParams.set('sort', 'date') // Sort by date
+    url.searchParams.set('lr', 'lang_en') // English language
+
+    console.log('Google Custom Search URL:', url.toString().replace(apiKey, '[REDACTED]'))
+
+    const response = await fetch(url.toString())
+    
+    if (!response.ok) {
+      console.error(`Google Custom Search request failed: ${response.status} ${response.statusText}`)
+      return []
+    }
+
+    const data = await response.json()
+    
+    if (!data.items || !Array.isArray(data.items)) {
+      console.log('No Google Custom Search results found')
+      return []
+    }
+
+    console.log(`Google Custom Search returned ${data.items.length} results`)
+
+    // Process and enhance search results
+    const articles = await Promise.all(
+      data.items.map(async (item: any, index: number) => {
+        // Try to scrape full content from the search result URL
+        let fullContent = item.snippet || ''
+        
+        if (item.link) {
+          const scrapedContent = await scrapeArticleContent(item.link)
+          if (scrapedContent && scrapedContent.length > fullContent.length) {
+            fullContent = scrapedContent
+            console.log(`Enhanced Google Search result ${index + 1} with scraped content`)
+          }
+        }
+
+        // Extract image from page meta or use a category-appropriate placeholder
+        let imageUrl = null
+        if (item.pagemap?.cse_image?.[0]?.src) {
+          imageUrl = item.pagemap.cse_image[0].src
+        } else if (item.pagemap?.metatags?.[0]?.['og:image']) {
+          imageUrl = item.pagemap.metatags[0]['og:image']
+        }
+
+        // Category-specific placeholder images
+        const categoryImages = {
+          sport: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=400&fit=crop',
+          football: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&h=400&fit=crop',
+          business: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&h=400&fit=crop',
+          entertainment: 'https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?w=800&h=400&fit=crop',
+          technology: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=400&fit=crop',
+          politics: 'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=800&h=400&fit=crop'
+        }
+        
+        // Extract source from URL domain
+        let source = 'Google Search'
+        try {
+          const domain = new URL(item.link).hostname.replace('www.', '')
+          source = domain.charAt(0).toUpperCase() + domain.slice(1)
+        } catch (e) {
+          // Use default source if URL parsing fails
+        }
+
+        return {
+          id: `google-${Date.now()}-${index}`,
+          title: item.title || 'Untitled',
+          summary: item.snippet || '',
+          content: fullContent,
+          image: imageUrl || categoryImages[category] || 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=400&fit=crop',
+          source: source,
+          category: category,
+          publishedAt: new Date().toISOString(), // Google doesn't provide publish date in search results
+          readTime: `${Math.ceil((fullContent?.length || 300) / 200)} min read`,
+          isVideo: false,
+          url: item.link
+        }
+      })
+    )
+
+    // Filter out articles with insufficient content
+    const filteredArticles = articles.filter(article => {
+      const hasTitle = article.title && article.title !== 'Untitled' && article.title.length > 10
+      const hasSummary = article.summary && article.summary.length > 20
+      
+      return hasTitle && hasSummary
+    })
+
+    console.log(`Filtered ${articles.length - filteredArticles.length} Google Search results with insufficient content`)
+    return filteredArticles
+
+  } catch (error) {
+    console.error('Error fetching Google Custom Search:', error)
+    return []
   }
 }
