@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { CategoryNav } from "./CategoryNav";
 import { FinanceSubcategories } from "./FinanceSubcategories";
+import { FootballSubcategories } from "./FootballSubcategories";
 import { NewsCarousel } from "./NewsCarousel";
 import { SignupPopup } from "./SignupPopup";
 import { PullToRefresh } from "./PullToRefresh";
@@ -91,6 +92,7 @@ export const NewsApp = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeFinanceSubcategory, setActiveFinanceSubcategory] = useState("all");
+  const [activeFootballSubcategory, setActiveFootballSubcategory] = useState("all");
   const [filteredArticles, setFilteredArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -158,7 +160,7 @@ export const NewsApp = () => {
                         activeCategory === "finance" ? "business" : 
                         activeCategory;
           
-          // Handle finance subcategories
+          // Handle subcategories
           let searchQuery = "";
           if (activeCategory === "finance" && activeFinanceSubcategory !== "all") {
             category = "business"; // Keep using business for API
@@ -174,6 +176,22 @@ export const NewsApp = () => {
                 break;
               case "global trade":
                 searchQuery = "trade OR import OR export OR tariff OR international trade OR global commerce";
+                break;
+            }
+          } else if (activeCategory === "football" && activeFootballSubcategory !== "all") {
+            category = "sports"; // Keep using sports for API
+            switch (activeFootballSubcategory) {
+              case "my team":
+                searchQuery = "football OR soccer OR team OR club OR match OR league";
+                break;
+              case "premier league":
+                searchQuery = "Premier League OR EPL OR English football OR Manchester OR Arsenal OR Chelsea OR Liverpool";
+                break;
+              case "uefa":
+                searchQuery = "UEFA OR Champions League OR Europa League OR European football OR UCL";
+                break;
+              case "international":
+                searchQuery = "FIFA OR World Cup OR international football OR national team OR Euro OR Copa America";
                 break;
             }
           }
@@ -221,7 +239,7 @@ export const NewsApp = () => {
 
   useEffect(() => {
     fetchNews();
-  }, [activeCategory, activeFinanceSubcategory, toast]);
+  }, [activeCategory, activeFinanceSubcategory, activeFootballSubcategory, toast]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -254,9 +272,12 @@ export const NewsApp = () => {
             onCategoryChange={(category) => {
               triggerHaptic();
               setActiveCategory(category);
-              // Reset finance subcategory when changing main categories
+              // Reset subcategories when changing main categories
               if (category !== "finance") {
                 setActiveFinanceSubcategory("all");
+              }
+              if (category !== "football") {
+                setActiveFootballSubcategory("all");
               }
             }}
           />
@@ -270,6 +291,17 @@ export const NewsApp = () => {
           onSubcategoryChange={(subcategory) => {
             triggerHaptic();
             setActiveFinanceSubcategory(subcategory);
+          }}
+        />
+      )}
+
+      {/* Football Subcategories */}
+      {activeCategory === "football" && (
+        <FootballSubcategories 
+          activeSubcategory={activeFootballSubcategory}
+          onSubcategoryChange={(subcategory) => {
+            triggerHaptic();
+            setActiveFootballSubcategory(subcategory);
           }}
         />
       )}
