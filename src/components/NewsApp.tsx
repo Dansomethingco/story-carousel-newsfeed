@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { CategoryNav } from "./CategoryNav";
+import { FinanceSubcategories } from "./FinanceSubcategories";
 import { NewsCarousel } from "./NewsCarousel";
 import { SignupPopup } from "./SignupPopup";
 import { PullToRefresh } from "./PullToRefresh";
@@ -89,6 +90,7 @@ const categories = ["all", "finance", "football"];
 export const NewsApp = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeFinanceSubcategory, setActiveFinanceSubcategory] = useState("all");
   const [filteredArticles, setFilteredArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -152,15 +154,36 @@ export const NewsApp = () => {
           }
         } else {
           // For specific categories
-          const category = activeCategory === "football" ? "sports" : 
-                          activeCategory === "finance" ? "business" : 
-                          activeCategory;
+          let category = activeCategory === "football" ? "sports" : 
+                        activeCategory === "finance" ? "business" : 
+                        activeCategory;
+          
+          // Handle finance subcategories
+          let searchQuery = "";
+          if (activeCategory === "finance" && activeFinanceSubcategory !== "all") {
+            category = "business"; // Keep using business for API
+            switch (activeFinanceSubcategory) {
+              case "stocks":
+                searchQuery = "stocks OR shares OR equity OR stock market OR NYSE OR NASDAQ";
+                break;
+              case "crypto":
+                searchQuery = "cryptocurrency OR bitcoin OR ethereum OR crypto OR blockchain OR digital currency";
+                break;
+              case "business":
+                searchQuery = "business OR corporate OR company OR enterprise OR earnings OR revenue";
+                break;
+              case "global trade":
+                searchQuery = "trade OR import OR export OR tariff OR international trade OR global commerce";
+                break;
+            }
+          }
           
           const response = await supabase.functions.invoke('fetch-news', {
             body: { 
               category: category,
               country: 'us',
-              pageSize: 20
+              pageSize: 20,
+              ...(searchQuery && { searchQuery })
             }
           });
 
@@ -198,7 +221,7 @@ export const NewsApp = () => {
 
   useEffect(() => {
     fetchNews();
-  }, [activeCategory, toast]);
+  }, [activeCategory, activeFinanceSubcategory, toast]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -231,10 +254,25 @@ export const NewsApp = () => {
             onCategoryChange={(category) => {
               triggerHaptic();
               setActiveCategory(category);
+              // Reset finance subcategory when changing main categories
+              if (category !== "finance") {
+                setActiveFinanceSubcategory("all");
+              }
             }}
           />
         </div>
       </header>
+
+      {/* Finance Subcategories */}
+      {activeCategory === "finance" && (
+        <FinanceSubcategories 
+          activeSubcategory={activeFinanceSubcategory}
+          onSubcategoryChange={(subcategory) => {
+            triggerHaptic();
+            setActiveFinanceSubcategory(subcategory);
+          }}
+        />
+      )}
 
       {/* Main Content */}
       <main className="flex-1">

@@ -7,18 +7,21 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { category = 'general', country = 'us', pageSize = 20 } = await req.json()
+    const { category = 'general', country = 'us', pageSize = 20, searchQuery } = await req.json()
     
     console.log('=== FETCH NEWS STARTED ===')
     console.log('Category:', category, 'Country:', country, 'PageSize:', pageSize)
+    if (searchQuery) {
+      console.log('Search Query:', searchQuery)
+    }
     
     // Fetch from NewsAPI and YouTube in parallel (PA Media and Mediastack disabled due to API failures)
     console.log('Starting parallel fetch from NewsAPI and YouTube...')
     const [newsApiData, paMediaData, mediastackData, youtubeData] = await Promise.allSettled([
-      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.5)), // 50% from NewsAPI 
+      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.5), searchQuery), // 50% from NewsAPI 
       fetchPAMedia(category, 0), // 0% from PA Media (disabled due to API failures)
       fetchMediastack(category, 0), // 0% from Mediastack (disabled due to rate limiting)
-      fetchYouTube(category, Math.ceil(pageSize * 0.5)) // 50% from YouTube
+      fetchYouTube(category, Math.ceil(pageSize * 0.5), searchQuery) // 50% from YouTube
     ])
     
     let newsApiArticles: any[] = []
@@ -180,7 +183,7 @@ async function scrapeArticleContent(url: string): Promise<string> {
   }
 }
 
-async function fetchNewsAPI(category: string, country: string, pageSize: number) {
+async function fetchNewsAPI(category: string, country: string, pageSize: number, searchQuery?: string) {
   const apiKey = Deno.env.get('NEWSAPI_KEY')
   if (!apiKey) {
     throw new Error('NewsAPI key not configured')
@@ -198,17 +201,21 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
 
   const newsApiCategory = categoryMapping[category] || 'general'
   
-  // For politics and business, use keywords for better accuracy
-  const useKeywords = category === 'politics' || category === 'business'
-  let searchQuery = ''
+  // For politics, business, and custom search queries, use keywords for better accuracy
+  const useKeywords = category === 'politics' || category === 'business' || searchQuery
+  let finalSearchQuery = ''
   let domains = ''
   
   if (useKeywords) {
-    if (category === 'politics') {
-      searchQuery = 'politics OR government OR election OR congress OR senate'
+    if (searchQuery) {
+      // Use custom search query (for finance subcategories)
+      finalSearchQuery = searchQuery
+      domains = 'bloomberg.com,cnbc.com,marketwatch.com,reuters.com,ft.com,wsj.com,forbes.com,businessinsider.com'
+    } else if (category === 'politics') {
+      finalSearchQuery = 'politics OR government OR election OR congress OR senate'
       domains = 'bbc.com,cnn.com,reuters.com,apnews.com,npr.org'
     } else if (category === 'business') {
-      searchQuery = 'finance OR stocks OR market OR economy OR business OR investing OR trading'
+      finalSearchQuery = 'finance OR stocks OR market OR economy OR business OR investing OR trading'
       domains = 'bloomberg.com,cnbc.com,marketwatch.com,reuters.com,ft.com,wsj.com,forbes.com,businessinsider.com'
     }
   }
@@ -220,8 +227,8 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
   url.searchParams.set('sortBy', 'publishedAt')
   url.searchParams.set('language', 'en')
   
-  if (useKeywords && searchQuery) {
-    url.searchParams.set('q', searchQuery)
+  if (useKeywords && finalSearchQuery) {
+    url.searchParams.set('q', finalSearchQuery)
     if (domains) {
       url.searchParams.set('domains', domains)
     }
@@ -532,7 +539,7 @@ async function fetchMediastack(category: string, pageSize: number) {
   }
 }
 
-async function fetchYouTube(category: string, pageSize: number) {
+async function fetchYouTube(category: string, pageSize: number, searchQuery?: string) {
   const apiKey = Deno.env.get('YOUTUBE_API_KEY')
   if (!apiKey) {
     console.log('YouTube API key not configured, skipping YouTube videos')
@@ -592,10 +599,11 @@ async function fetchYouTube(category: string, pageSize: number) {
 
   const newsChannels = getChannelsForCategory(category)
 
-  const searchQuery = searchQueries[category] || searchQueries['all']
+  // Use custom search query if provided, otherwise use category-based query
+  const finalSearchQuery = searchQuery || searchQueries[category] || searchQueries['all']
   
   try {
-    console.log(`Fetching YouTube videos for category: ${category} with query: ${searchQuery}`)
+    console.log(`Fetching YouTube videos for category: ${category} with query: ${finalSearchQuery}`)
     
     // First try searching from specific UK news channels
     let allVideos = []
@@ -622,7 +630,7 @@ async function fetchYouTube(category: string, pageSize: number) {
       const url = new URL('https://www.googleapis.com/youtube/v3/search')
       url.searchParams.set('key', apiKey)
       url.searchParams.set('part', 'snippet')
-      url.searchParams.set('q', searchQuery)
+      url.searchParams.set('q', finalSearchQuery)
       url.searchParams.set('type', 'video')
       url.searchParams.set('order', 'date')
       url.searchParams.set('maxResults', '2') // Get 2 videos per priority channel
@@ -650,7 +658,7 @@ async function fetchYouTube(category: string, pageSize: number) {
       const url = new URL('https://www.googleapis.com/youtube/v3/search')
       url.searchParams.set('key', apiKey)
       url.searchParams.set('part', 'snippet')
-      url.searchParams.set('q', searchQuery)
+      url.searchParams.set('q', finalSearchQuery)
       url.searchParams.set('type', 'video')
       url.searchParams.set('order', 'date')
       url.searchParams.set('maxResults', (pageSize - allVideos.length).toString())
