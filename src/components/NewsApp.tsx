@@ -34,57 +34,7 @@ interface NewsArticle {
   videoThumbnail?: string;
 }
 
-// Mock data - in a real app this would come from an API
-const mockArticles: NewsArticle[] = [
-  {
-    id: "1",
-    title: "Sam Cook earns maiden England call up as Zak Crawley retains spot for Zimbabwe Test match",
-    summary: "Nottinghamshire fast bowler Josh Tongue in line for a first England cap in two years after injury troubles; Shoaib Bashir retains role as front-line spinner over Jack Leach; England face Zimbabwe in one-off Test at Trent Bridge, live on Sky Sports from May 22-25",
-    content: "Cook's call up is reward for years of consistent performances on the county circuit for a number of years, averaging 19.77 with the ball. He joins Gus Atkinson, Matthew Potts and Josh Tongue as the team's pace options for England captain Ben Stokes at Trent Bridge from May 22, with Stokes himself fit to feature after having surgery on the hamstring before the third Test of England's series win in New Zealand. Nottinghamshire fast bowler Tongue is in line to play his first Test in two years after injuries stalled a promising start and limited his involvement which included a five-for on debut against Ireland and five more wickets across four Tests against Australia at Lord's in 2023.",
-    image: sportsNews,
-    source: "Sky Sports",
-    category: "football",
-    publishedAt: "2025-07-10T13:00:00Z",
-    readTime: "3 min read",
-    isVideo: false
-  },
-  {
-    id: "2",
-    title: "Five things to know before Miami Grand Prix",
-    summary: "BBC Sport's Harry Benjamin looks ahead to the Miami Grand Prix and the five things to look out for over the race weekend.",
-    content: "The Miami Grand Prix returns for another exciting weekend of Formula 1 racing. With the championship battle heating up, all eyes will be on the key contenders as they navigate the challenging street circuit. The weather conditions are expected to play a crucial role, with potential for rain adding an extra element of unpredictability to the race. Teams have been working tirelessly on their setups to find the perfect balance between speed and reliability on this unique track layout.",
-    image: f1News,
-    source: "BBC Sport",
-    category: "football",
-    publishedAt: "2025-07-10T08:00:00Z",
-    readTime: "4 min read",
-    isVideo: false
-  },
-  {
-    id: "3",
-    title: "Government Announces New Economic Recovery Package",
-    summary: "A comprehensive economic stimulus package aimed at supporting businesses and workers affected by recent market volatility has been unveiled by government officials.",
-    content: "The new economic recovery package includes targeted support for small businesses, extended unemployment benefits, and infrastructure investment programs. The announcement comes as policymakers work to address ongoing economic challenges and support sustainable growth. Key measures include tax relief for businesses, funding for green technology initiatives, and support for skills training programs to help workers adapt to changing market conditions.",
-    image: politicsNews,
-    source: "Government News",
-    category: "politics",
-    publishedAt: "2025-07-10T10:30:00Z",
-    readTime: "5 min read",
-    isVideo: false
-  },
-  {
-    id: "4",
-    title: "Breaking: Major Technology Breakthrough Announced",
-    summary: "Scientists have achieved a significant breakthrough in quantum computing that could revolutionize multiple industries and accelerate technological advancement.",
-    content: "The breakthrough represents years of research and development in quantum computing technology. Experts believe this advancement could have far-reaching implications for cybersecurity, drug discovery, and artificial intelligence. The research team has successfully demonstrated quantum advantage in practical applications, marking a crucial milestone in the field. Industry leaders are already exploring potential applications and partnerships to bring this technology to market.",
-    image: newsHero,
-    source: "Tech News Daily",
-    category: "technology",
-    publishedAt: "2025-07-10T12:00:00Z",
-    readTime: "6 min read",
-    isVideo: false
-  }
-];
+// Mock data removed - using live news only
 
 const categories = ["all", "finance", "football"];
 
@@ -145,10 +95,66 @@ export const NewsApp = () => {
             setArticles(shuffled);
             console.log(`Successfully loaded ${shuffled.length} articles from multiple categories`);
           } else {
-            setArticles(mockArticles);
+            setArticles([]);
             toast({
               title: "Connection error",
-              description: "Unable to fetch latest news. Using cached articles.",
+              description: "Unable to fetch latest news. Please try again.",
+              variant: "destructive",
+            });
+          }
+        } else if (activeCategory === "finance" && activeFinanceSubcategory === "all") {
+          // For finance "all", fetch from each subcategory and combine
+          const financeSubcategories = ["stocks", "crypto", "business", "global trade"];
+          const allFinanceArticles: NewsArticle[] = [];
+          
+          for (const subcat of financeSubcategories) {
+            try {
+              let searchQuery = "";
+              switch (subcat) {
+                case "stocks":
+                  searchQuery = "stocks OR shares OR equity OR \"stock market\" OR NYSE OR NASDAQ OR \"S&P 500\" OR \"Dow Jones\" OR indices OR trading OR CFDs";
+                  break;
+                case "crypto":
+                  searchQuery = "cryptocurrency OR bitcoin OR ethereum OR crypto OR blockchain OR \"digital currency\" OR \"crypto trading\"";
+                  break;
+                case "business":
+                  searchQuery = "business OR corporate OR company OR enterprise OR earnings OR revenue OR \"quarterly results\" OR IPO OR merger";
+                  break;
+                case "global trade":
+                  searchQuery = "trade OR import OR export OR tariff OR \"international trade\" OR \"global commerce\" OR \"trade deals\"";
+                  break;
+              }
+              
+              const response = await supabase.functions.invoke('fetch-news', {
+                body: { 
+                  category: "business",
+                  country: 'us',
+                  pageSize: 5,
+                  searchQuery
+                }
+              });
+              
+              if (response.data?.articles) {
+                allFinanceArticles.push(...response.data.articles);
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch ${subcat} finance news:`, error);
+            }
+          }
+          
+          if (allFinanceArticles.length > 0) {
+            // Remove duplicates and shuffle
+            const uniqueArticles = allFinanceArticles.filter((article, index, self) => 
+              index === self.findIndex(a => a.title === article.title)
+            );
+            const shuffled = uniqueArticles.sort(() => Math.random() - 0.5).slice(0, 20);
+            setArticles(shuffled);
+            console.log(`Successfully loaded ${shuffled.length} finance articles from all subcategories`);
+          } else {
+            setArticles([]);
+            toast({
+              title: "Connection error",
+              description: "Unable to fetch finance news. Please try again.",
               variant: "destructive",
             });
           }
@@ -162,10 +168,7 @@ export const NewsApp = () => {
           let searchQuery = "";
           if (activeCategory === "finance") {
             category = "business"; // Keep using business for API
-            if (activeFinanceSubcategory === "all") {
-              // Combine all finance subcategories for comprehensive coverage
-              searchQuery = "stocks OR shares OR equity OR \"stock market\" OR NYSE OR NASDAQ OR \"S&P 500\" OR \"Dow Jones\" OR indices OR trading OR CFDs OR \"futures market\" OR cryptocurrency OR bitcoin OR ethereum OR crypto OR blockchain OR \"digital currency\" OR \"crypto trading\" OR business OR corporate OR company OR enterprise OR earnings OR revenue OR \"quarterly results\" OR IPO OR merger OR acquisition OR trade OR import OR export OR tariff OR \"international trade\" OR \"global commerce\" OR \"trade deals\" OR \"trade war\" OR \"supply chain\"";
-            } else {
+            if (activeFinanceSubcategory !== "all") {
               switch (activeFinanceSubcategory) {
                 case "stocks":
                   searchQuery = "stocks OR shares OR equity OR \"stock market\" OR NYSE OR NASDAQ OR \"S&P 500\" OR \"Dow Jones\" OR indices OR trading OR CFDs OR \"futures market\" OR \"options trading\" OR \"market volatility\" OR \"bull market\" OR \"bear market\"";
@@ -218,10 +221,10 @@ export const NewsApp = () => {
             setArticles(data.articles);
             console.log(`Successfully loaded ${data.articles.length} articles for ${activeCategory}`);
           } else {
-            setArticles(mockArticles);
+            setArticles([]);
             toast({
-              title: "Connection error",
-              description: "Unable to fetch latest news. Using cached articles.",
+              title: "No articles found",
+              description: "No news articles available for this category. Please try again later.",
               variant: "destructive",
             });
           }
@@ -231,10 +234,10 @@ export const NewsApp = () => {
         console.error('Error calling edge function:', error);
         toast({
           title: "Connection error",
-          description: "Unable to fetch latest news. Using cached articles.",
+          description: "Unable to fetch latest news. Please check your connection and try again.",
           variant: "destructive",
         });
-        setArticles(mockArticles);
+        setArticles([]);
       } finally {
         setLoading(false);
       }
