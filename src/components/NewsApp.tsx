@@ -99,11 +99,9 @@ export const NewsApp = () => {
   const { isNative, triggerHaptic } = useCapacitor();
 
   useEffect(() => {
-    if (activeCategory === "all") {
-      setFilteredArticles(articles);
-    } else {
-      setFilteredArticles(articles.filter(article => article.category === activeCategory));
-    }
+    // Articles are already category-specific when not on "all",
+    // so just display the loaded set without re-filtering.
+    setFilteredArticles(articles);
   }, [activeCategory, articles]);
 
   // Configure status bar for mobile
