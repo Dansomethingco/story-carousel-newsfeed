@@ -466,10 +466,6 @@ function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
   const isRelevant = matchedKeywords.length >= 1
   console.log(`Default relevance -> matched=${matchedKeywords.length}, relevant=${isRelevant}`)
   return isRelevant
-    console.log(`Matched keywords: ${matchedKeywords.slice(0, 3).join(', ')}`)
-  }
-  
-  return isRelevant
 }
 
 // Enhanced finance search query processing
