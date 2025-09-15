@@ -14,6 +14,7 @@ import sportsNews from "@/assets/sports-news.jpg";
 import f1News from "@/assets/f1-news.jpg";
 import politicsNews from "@/assets/politics-news.jpg";
 import financeLogo from "@/assets/finance-logo.svg";
+import footballLogo from "@/assets/football-logo.svg";
 
 interface NewsArticle {
   id: string;
@@ -40,7 +41,7 @@ const mockArticles: NewsArticle[] = [
     content: "Cook's call up is reward for years of consistent performances on the county circuit for a number of years, averaging 19.77 with the ball. He joins Gus Atkinson, Matthew Potts and Josh Tongue as the team's pace options for England captain Ben Stokes at Trent Bridge from May 22, with Stokes himself fit to feature after having surgery on the hamstring before the third Test of England's series win in New Zealand. Nottinghamshire fast bowler Tongue is in line to play his first Test in two years after injuries stalled a promising start and limited his involvement which included a five-for on debut against Ireland and five more wickets across four Tests against Australia at Lord's in 2023.",
     image: sportsNews,
     source: "Sky Sports",
-    category: "sport",
+    category: "football",
     publishedAt: "2025-07-10T13:00:00Z",
     readTime: "3 min read",
     isVideo: false
@@ -52,7 +53,7 @@ const mockArticles: NewsArticle[] = [
     content: "The Miami Grand Prix returns for another exciting weekend of Formula 1 racing. With the championship battle heating up, all eyes will be on the key contenders as they navigate the challenging street circuit. The weather conditions are expected to play a crucial role, with potential for rain adding an extra element of unpredictability to the race. Teams have been working tirelessly on their setups to find the perfect balance between speed and reliability on this unique track layout.",
     image: f1News,
     source: "BBC Sport",
-    category: "sport",
+    category: "football",
     publishedAt: "2025-07-10T08:00:00Z",
     readTime: "4 min read",
     isVideo: false
@@ -83,7 +84,7 @@ const mockArticles: NewsArticle[] = [
   }
 ];
 
-const categories = ["all", "finance", "sport"];
+const categories = ["all", "finance", "football"];
 
 export const NewsApp = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
@@ -113,7 +114,9 @@ export const NewsApp = () => {
       try {
         setLoading(true);
         
-        const category = activeCategory === "all" ? "general" : activeCategory;
+        const category = activeCategory === "all" ? "general" : 
+                        activeCategory === "football" ? "sports" : 
+                        activeCategory;
         
         // Call unified fetch-news endpoint
         const response = await supabase.functions.invoke('fetch-news', {
@@ -169,7 +172,11 @@ export const NewsApp = () => {
         <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <img 
-              src={activeCategory === "finance" ? financeLogo : "/lovable-uploads/c6389b85-0967-4d79-8532-74f1d53b31f7.png"}
+              src={
+                activeCategory === "finance" ? financeLogo : 
+                activeCategory === "football" ? footballLogo :
+                "/lovable-uploads/c6389b85-0967-4d79-8532-74f1d53b31f7.png"
+              }
               alt="Today" 
               className="h-12 md:h-16 w-auto object-contain"
             />
