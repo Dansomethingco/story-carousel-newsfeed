@@ -373,11 +373,10 @@ function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
   
   // First, check for obvious irrelevant topics that should be blocked
   const blockedTopics = [
-    'shooting', 'murder', 'crime', 'police', 'arrest', 'court', 'legal case', 'lawsuit',
-    'fashion week', 'plus-size', 'clothing', 'designer', 'runway', 'model',
+    'shooting', 'murder', 'crime', 'police', 'arrest', 'court', 'lawsuit',
+    'fashion week', 'plus-size', 'clothing', 'designer', 'runway', 
     'celebrity', 'awards', 'emmy', 'oscar', 'entertainment', 'movie', 'tv show',
-    'sports', 'football', 'basketball', 'soccer', 'baseball', 'hockey',
-    'politics', 'election', 'candidate', 'vote', 'congress', 'senate', 'political'
+    'sports news', 'football', 'basketball', 'soccer', 'baseball', 'hockey'
   ]
   
   const hasBlockedContent = blockedTopics.some(topic => 
@@ -449,7 +448,7 @@ function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
   if (categoryFound === 'stocks') {
     const strongTitleKeywords = ['stock','stocks','share','shares','equity','nyse','nasdaq','s&p','dow','ftse','eps','dividend','ticker']
     const titleHasStrong = strongTitleKeywords.some(k => title.includes(k))
-    const isRelevant = titleHasStrong ? matchedKeywords.length >= 1 : matchedKeywords.length >= 3
+    const isRelevant = titleHasStrong || matchedKeywords.length >= 1
     console.log(`Stocks relevance -> titleHasStrong=${titleHasStrong}, matched=${matchedKeywords.length}, relevant=${isRelevant}`)
     return isRelevant
   }
@@ -457,14 +456,14 @@ function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
   if (categoryFound === 'crypto') {
     const strongTitleKeywords = ['crypto','bitcoin','ethereum','btc','eth','token','stablecoin']
     const titleHasStrong = strongTitleKeywords.some(k => title.includes(k))
-    const isRelevant = titleHasStrong ? matchedKeywords.length >= 1 : matchedKeywords.length >= 2
+    const isRelevant = titleHasStrong || matchedKeywords.length >= 1
     console.log(`Crypto relevance -> titleHasStrong=${titleHasStrong}, matched=${matchedKeywords.length}, relevant=${isRelevant}`)
     return isRelevant
   }
   
-  // Default rule: require at least 1 relevant keyword
-  const isRelevant = matchedKeywords.length >= 1
-  console.log(`Default relevance -> matched=${matchedKeywords.length}, relevant=${isRelevant}`)
+  // Default rule: require at least 1 relevant keyword OR allow business articles through
+  const isRelevant = matchedKeywords.length >= 1 || categoryFound === 'business'
+  console.log(`Default relevance -> matched=${matchedKeywords.length}, category=${categoryFound}, relevant=${isRelevant}`)
   return isRelevant
 }
 
