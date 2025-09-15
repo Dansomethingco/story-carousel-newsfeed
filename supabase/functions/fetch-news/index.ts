@@ -331,18 +331,89 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number,
     })
   )
 
-  // Filter out articles with insufficient content (likely behind paywalls)
+  // Filter out articles with insufficient content and check relevance for search queries
   const filteredArticles = articles.filter(article => {
     const hasTitle = article.title && article.title !== 'Untitled' && article.title.length > 10
     const hasContent = article.content && article.content.length > 100
     const hasSummary = article.summary && article.summary.length > 20
     
-    // Article must have a proper title and either substantial content or a good summary
-    return hasTitle && (hasContent || hasSummary)
+    // Basic content requirements
+    const hasBasicContent = hasTitle && (hasContent || hasSummary)
+    if (!hasBasicContent) return false
+    
+    // If there's a specific search query, check relevance
+    if (searchQuery && searchQuery.length > 5) {
+      return isArticleRelevantToQuery(article, searchQuery)
+    }
+    
+    return true
   })
 
   console.log(`Filtered ${articles.length - filteredArticles.length} articles with insufficient content`)
   return filteredArticles
+}
+
+// Check if article is relevant to the search query
+function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
+  const title = (article.title || '').toLowerCase()
+  const summary = (article.summary || '').toLowerCase()
+  const content = (article.content || '').toLowerCase()
+  const combinedText = `${title} ${summary} ${content}`
+  
+  // Define relevance keywords for each finance subcategory
+  const relevanceMap: { [key: string]: string[] } = {
+    'stocks': [
+      'stock', 'stocks', 'share', 'shares', 'equity', 'trading', 'market', 'nasdaq', 'nyse', 
+      'dow', 'sp500', 's&p', 'earnings', 'dividend', 'investor', 'analyst', 'price target',
+      'revenue', 'profit', 'financial', 'ticker', 'volatility', 'bull', 'bear', 'index'
+    ],
+    'crypto': [
+      'crypto', 'bitcoin', 'ethereum', 'blockchain', 'cryptocurrency', 'digital currency',
+      'defi', 'nft', 'web3', 'altcoin', 'mining', 'wallet', 'exchange', 'stablecoin',
+      'btc', 'eth', 'cbdc', 'token', 'dapp', 'smart contract'
+    ],
+    'business': [
+      'business', 'corporate', 'company', 'enterprise', 'ceo', 'revenue', 'merger',
+      'acquisition', 'startup', 'ipo', 'quarterly', 'earnings', 'profit', 'loss',
+      'strategy', 'operations', 'management', 'executive', 'board', 'shareholders'
+    ],
+    'global trade': [
+      'trade', 'export', 'import', 'tariff', 'customs', 'international', 'global',
+      'commerce', 'supply chain', 'logistics', 'wto', 'agreement', 'deficit', 'surplus',
+      'sanctions', 'embargo', 'trade war', 'nafta', 'usmca', 'brexit'
+    ]
+  }
+  
+  // Determine which category this search query belongs to
+  let relevantKeywords: string[] = []
+  for (const [category, keywords] of Object.entries(relevanceMap)) {
+    if (searchQuery.toLowerCase().includes(category)) {
+      relevantKeywords = keywords
+      break
+    }
+  }
+  
+  // If no specific category match, use a general approach
+  if (relevantKeywords.length === 0) {
+    // Extract key terms from the search query
+    const queryTerms = searchQuery.toLowerCase()
+      .split(/\s+or\s+|\s+and\s+|\s+/)
+      .map(term => term.replace(/['"()]/g, '').trim())
+      .filter(term => term.length > 2)
+    
+    // Check if at least 2 query terms appear in the article
+    const matchCount = queryTerms.filter(term => combinedText.includes(term)).length
+    return matchCount >= Math.min(2, queryTerms.length)
+  }
+  
+  // Check if article contains relevant keywords
+  const keywordMatches = relevantKeywords.filter(keyword => 
+    combinedText.includes(keyword)
+  ).length
+  
+  // Require at least 2 relevant keywords for stocks/crypto, 1 for others
+  const minMatches = ['stocks', 'crypto'].some(cat => searchQuery.toLowerCase().includes(cat)) ? 2 : 1
+  return keywordMatches >= minMatches
 }
 
 // Enhanced finance search query processing
@@ -971,12 +1042,21 @@ async function fetchGoogleCustomSearch(category: string, pageSize: number, searc
       })
     )
 
-    // Filter out articles with insufficient content
+    // Filter out articles with insufficient content and check relevance
     const filteredArticles = articles.filter(article => {
       const hasTitle = article.title && article.title !== 'Untitled' && article.title.length > 10
       const hasSummary = article.summary && article.summary.length > 20
       
-      return hasTitle && hasSummary
+      // Basic content requirements
+      const hasBasicContent = hasTitle && hasSummary
+      if (!hasBasicContent) return false
+      
+      // If there's a specific search query, check relevance
+      if (searchQuery && searchQuery.length > 5) {
+        return isArticleRelevantToQuery(article, searchQuery)
+      }
+      
+      return true
     })
 
     console.log(`Filtered ${articles.length - filteredArticles.length} Google Search results with insufficient content`)
