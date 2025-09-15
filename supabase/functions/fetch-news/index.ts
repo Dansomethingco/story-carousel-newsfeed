@@ -12,13 +12,13 @@ Deno.serve(async (req) => {
     console.log('=== FETCH NEWS STARTED ===')
     console.log('Category:', category, 'Country:', country, 'PageSize:', pageSize)
     
-    // Fetch from NewsAPI, PA Media, Mediastack, and YouTube in parallel
-    console.log('Starting parallel fetch from NewsAPI, PA Media, Mediastack, and YouTube...')
+    // Fetch from NewsAPI and YouTube in parallel (PA Media and Mediastack disabled due to API failures)
+    console.log('Starting parallel fetch from NewsAPI and YouTube...')
     const [newsApiData, paMediaData, mediastackData, youtubeData] = await Promise.allSettled([
-      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.35)), // 35% from NewsAPI 
+      fetchNewsAPI(category, country, Math.ceil(pageSize * 0.5)), // 50% from NewsAPI 
       fetchPAMedia(category, 0), // 0% from PA Media (disabled due to API failures)
-      fetchMediastack(category, Math.ceil(pageSize * 0.3)), // 30% from Mediastack
-      fetchYouTube(category, Math.ceil(pageSize * 0.35)) // 35% from YouTube
+      fetchMediastack(category, 0), // 0% from Mediastack (disabled due to rate limiting)
+      fetchYouTube(category, Math.ceil(pageSize * 0.5)) // 50% from YouTube
     ])
     
     let newsApiArticles: any[] = []
@@ -65,32 +65,19 @@ Deno.serve(async (req) => {
     let mediastackIndex = 0
     let youtubeIndex = 0
     
-    for (let i = 0; i < pageSize && (newsIndex < newsApiArticles.length || paIndex < paMediaArticles.length || mediastackIndex < mediastackArticles.length || youtubeIndex < youtubeArticles.length); i++) {
-      // YouTube gets 35% - approximately every 3rd article
-      if ((i + 1) % 3 === 0 && youtubeIndex < youtubeArticles.length) {
+    for (let i = 0; i < pageSize && (newsIndex < newsApiArticles.length || youtubeIndex < youtubeArticles.length); i++) {
+      // Alternate between NewsAPI (50%) and YouTube (50%)
+      if (i % 2 === 0 && newsIndex < newsApiArticles.length) {
+        interweavedArticles.push(newsApiArticles[newsIndex])
+        newsIndex++
+      } else if (youtubeIndex < youtubeArticles.length) {
         interweavedArticles.push(youtubeArticles[youtubeIndex])
         youtubeIndex++
       } 
-      // Mediastack gets 30% - every 10th and 7th position
-      else if (((i + 1) % 10 === 0 || (i + 1) % 7 === 0) && mediastackIndex < mediastackArticles.length) {
-        interweavedArticles.push(mediastackArticles[mediastackIndex])
-        mediastackIndex++
-      } 
-      // NewsAPI fills the remaining 35% 
+      // Fill remaining positions with any available content
       else if (newsIndex < newsApiArticles.length) {
         interweavedArticles.push(newsApiArticles[newsIndex])
         newsIndex++
-      } 
-      // Fill remaining positions with any available content
-      else if (youtubeIndex < youtubeArticles.length) {
-        interweavedArticles.push(youtubeArticles[youtubeIndex])
-        youtubeIndex++
-      } else if (mediastackIndex < mediastackArticles.length) {
-        interweavedArticles.push(mediastackArticles[mediastackIndex])
-        mediastackIndex++
-      } else if (paIndex < paMediaArticles.length) {
-        interweavedArticles.push(paMediaArticles[paIndex])
-        paIndex++
       }
     }
     
@@ -211,12 +198,19 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
 
   const newsApiCategory = categoryMapping[category] || 'general'
   
-  // For politics, use keywords for better accuracy
-  const useKeywords = category === 'politics'
+  // For politics and business, use keywords for better accuracy
+  const useKeywords = category === 'politics' || category === 'business'
   let searchQuery = ''
+  let domains = ''
   
   if (useKeywords) {
-    searchQuery = 'politics OR government OR election OR congress OR senate'
+    if (category === 'politics') {
+      searchQuery = 'politics OR government OR election OR congress OR senate'
+      domains = 'bbc.com,cnn.com,reuters.com,apnews.com,npr.org'
+    } else if (category === 'business') {
+      searchQuery = 'finance OR stocks OR market OR economy OR business OR investing OR trading'
+      domains = 'bloomberg.com,cnbc.com,marketwatch.com,reuters.com,ft.com,wsj.com,forbes.com,businessinsider.com'
+    }
   }
 
   const baseUrl = useKeywords ? 'https://newsapi.org/v2/everything' : 'https://newsapi.org/v2/top-headlines'
@@ -228,7 +222,9 @@ async function fetchNewsAPI(category: string, country: string, pageSize: number)
   
   if (useKeywords && searchQuery) {
     url.searchParams.set('q', searchQuery)
-    url.searchParams.set('domains', 'bbc.com,cnn.com,reuters.com,apnews.com,npr.org')
+    if (domains) {
+      url.searchParams.set('domains', domains)
+    }
   } else {
     url.searchParams.set('country', country)
     if (newsApiCategory !== 'general') {
@@ -543,43 +539,58 @@ async function fetchYouTube(category: string, pageSize: number) {
     return []
   }
 
-  // Map categories to simplified search queries
+  // Map categories to specific search queries
   const searchQueries: { [key: string]: string } = {
     'all': 'breaking news',
     'sport': 'sports news',
-    'business': 'business news',
+    'business': 'finance OR "stock market" OR "financial markets" OR investing OR economy',
     'politics': 'politics news',
     'technology': 'technology news',
     'entertainment': 'entertainment news'
   }
 
-  // Target UK news channels for better quality content
-  const newsChannels = [
-    'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
-    'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
-    'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
-    'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
-    'UC7sKjgexQyOqaT_hLTZZa6Q', // GBNews
-    'UCLr3JBqAV5B7_Z_Bi9qS8iQ', // TalkTV
-    'UCEcWIpRNf6dJ9IpxJ3bVoMw', // Guardian News
-    'UCJyR9zJUJbLyV6C-2Dk9MmA', // Times News
-    'UCL2rKZvF-ow5_JUhlNJhO_Q', // The Telegraph
-    'UCKkS6d0cKMBL8ziYFO6k2ag', // Financial Times
-    'UC8oETwb3P4xGDqjQr6FzGSw', // The Sun
-    'UC5i68sO3w6wvNk8lQaOJGLA', // Daily Mail World
-    'UCUkWKE-RX1BlXH31NkZhm4g', // The Mirror
-    'UC0fDgfgaWRLOlqSJr4rMUAQ', // Daily Express
-    'UCqFfguwqnKaNnRPPrpYT5nA', // Metro_UK
-    'UCJWDNhLBKhBU2YqZoKhz4Xw', // The Independent
-    'UCkWQ0gDrqOCarmUKmppD7GQ', // The Economist
-    'UCJ7wYCT7aBRnr7_EO-UJx9Q', // New Statesman
-    'UC7_l_Bhu-V3OvFhYxDYOj7A', // SpectatorTV
-    'UCNAf1k0yIjyGu3k9BwAg3lg', // Sky Sports
-    'UCw6SJIJx-TYz6YBK2lVLCqw', // TNT Sports
-    'UC_VhdOOEVKM5tXjF5B8e0Aw', // BBC Sport
-    'UC4k8iTGOUBaKCRa4PKvJ4pw', // talkSPORT
-    'UCQvQ8LPxhq7TzUpRFPAJGdQ'  // The Football Terrace
-  ]
+  // Target news channels, with finance-specific channels for business category
+  const getChannelsForCategory = (cat: string) => {
+    if (cat === 'business') {
+      return [
+        'UCfMRmYHye7PropL5FnXl2vg', // CNBC
+        'UCIALMKvObZNtJ6AmdCLP7Lg', // Bloomberg Markets and Finance
+        'UCKkS6d0cKMBL8ziYFO6k2ag', // Financial Times
+        'UCrp_UI8XtuYfpiqluWLD7Lw', // MarketWatch
+        'UCfMRmYHye7PropL5FnXl2vg', // CNBC International
+        'UC2ts2r9_VKyIW95x7-y-lUg', // Yahoo Finance
+        'UCF26Pp77CZxyR5z3vDsl11g', // Investing.com
+      ]
+    } else {
+      return [
+        'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
+        'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
+        'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
+        'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
+        'UC7sKjgexQyOqaT_hLTZZa6Q', // GBNews
+        'UCLr3JBqAV5B7_Z_Bi9qS8iQ', // TalkTV
+        'UCEcWIpRNf6dJ9IpxJ3bVoMw', // Guardian News
+        'UCJyR9zJUUbLyV6C-2Dk9MmA', // Times News
+        'UCL2rKZvF-ow5_JUhlNJhO_Q', // The Telegraph
+        'UC8oETwb3P4xGDqjQr6FzGSw', // The Sun
+        'UC5i68sO3w6wvNk8lQaOJGLA', // Daily Mail World
+        'UCUkWKE-RX1BlXH31NkZhm4g', // The Mirror
+        'UC0fDgfgaWRLOlqSJr4rMUAQ', // Daily Express
+        'UCqFfguwqnKaNnRPPrpYT5nA', // Metro_UK
+        'UCJWDNhLBKhBU2YqZoKhz4Xw', // The Independent
+        'UCkWQ0gDrqOCarmUKmppD7GQ', // The Economist
+        'UCJ7wYCT7aBRnr7_EO-UJx9Q', // New Statesman
+        'UC7_l_Bhu-V3OvFhYxDYOj7A', // SpectatorTV
+        'UCNAf1k0yIjyGu3k9BwAg3lg', // Sky Sports
+        'UCw6SJIJx-TYz6YBK2lVLCqw', // TNT Sports
+        'UC_VhdOOEVKM5tXjF5B8e0Aw', // BBC Sport
+        'UC4k8iTGOUBaKCRa4PKvJ4pw', // talkSPORT
+        'UCQvQ8LPxhq7TzUpRFPAJGdQ'  // The Football Terrace
+      ]
+    }
+  }
+
+  const newsChannels = getChannelsForCategory(category)
 
   const searchQuery = searchQueries[category] || searchQueries['all']
   
@@ -589,13 +600,20 @@ async function fetchYouTube(category: string, pageSize: number) {
     // First try searching from specific UK news channels
     let allVideos = []
     
-    // Try to get videos from major UK news channels first
-    const priorityChannels = [
-      'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
-      'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
-      'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
-      'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
-    ]
+    // Get priority channels based on category
+    const priorityChannels = category === 'business' 
+      ? [
+          'UCfMRmYHye7PropL5FnXl2vg', // CNBC
+          'UCIALMKvObZNtJ6AmdCLP7Lg', // Bloomberg Markets and Finance
+          'UCKkS6d0cKMBL8ziYFO6k2ag', // Financial Times
+          'UCrp_UI8XtuYfpiqluWLD7Lw', // MarketWatch
+        ]
+      : [
+          'UChqUTb7kYRX8-EiaN3XFrSQ', // BBC News
+          'UCaO6VoaYJv4kS-TQO_M-N_g', // Sky News
+          'UC6uKrU_WqJ1R2HMTY3LIx5Q', // ITV News
+          'UCbLGY0LE3AAIUQ1xKjWK0nQ', // Channel 4 News
+        ]
     
     // Try each priority channel individually
     for (const channelId of priorityChannels) {
@@ -608,7 +626,9 @@ async function fetchYouTube(category: string, pageSize: number) {
       url.searchParams.set('type', 'video')
       url.searchParams.set('order', 'date')
       url.searchParams.set('maxResults', '2') // Get 2 videos per priority channel
-      url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
+      // Use longer time window for finance category to get more content
+      const timeWindow = category === 'business' ? 7 * 24 * 60 * 60 * 1000 : 72 * 60 * 60 * 1000 // 7 days for finance, 3 days for others
+      url.searchParams.set('publishedAfter', new Date(Date.now() - timeWindow).toISOString())
       url.searchParams.set('relevanceLanguage', 'en')
       url.searchParams.set('regionCode', 'GB')
       url.searchParams.set('channelId', channelId)
@@ -634,7 +654,9 @@ async function fetchYouTube(category: string, pageSize: number) {
       url.searchParams.set('type', 'video')
       url.searchParams.set('order', 'date')
       url.searchParams.set('maxResults', (pageSize - allVideos.length).toString())
-      url.searchParams.set('publishedAfter', new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()) // Last 72 hours (3 days)
+      // Use longer time window for finance category to get more content
+      const timeWindow = category === 'business' ? 7 * 24 * 60 * 60 * 1000 : 72 * 60 * 60 * 1000 // 7 days for finance, 3 days for others
+      url.searchParams.set('publishedAfter', new Date(Date.now() - timeWindow).toISOString())
       url.searchParams.set('relevanceLanguage', 'en')
       url.searchParams.set('regionCode', 'GB')
       
