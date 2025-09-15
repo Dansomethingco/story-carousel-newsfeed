@@ -445,12 +445,27 @@ function isArticleRelevantToQuery(article: any, searchQuery: string): boolean {
     combinedText.includes(keyword)
   )
   
-  // Require at least 2 relevant keywords for stocks/crypto, 1 for others
-  const minMatches = ['stocks', 'crypto'].includes(categoryFound) ? 2 : 1
-  const isRelevant = matchedKeywords.length >= minMatches
+  // Title-based precision rules
+  if (categoryFound === 'stocks') {
+    const strongTitleKeywords = ['stock','stocks','share','shares','equity','nyse','nasdaq','s&p','dow','ftse','eps','dividend','ticker']
+    const titleHasStrong = strongTitleKeywords.some(k => title.includes(k))
+    const isRelevant = titleHasStrong ? matchedKeywords.length >= 1 : matchedKeywords.length >= 3
+    console.log(`Stocks relevance -> titleHasStrong=${titleHasStrong}, matched=${matchedKeywords.length}, relevant=${isRelevant}`)
+    return isRelevant
+  }
   
-  console.log(`Category: ${categoryFound}, Keywords matched: ${matchedKeywords.length}/${relevantKeywords.length} (need ${minMatches}), Relevant: ${isRelevant}`)
-  if (matchedKeywords.length > 0) {
+  if (categoryFound === 'crypto') {
+    const strongTitleKeywords = ['crypto','bitcoin','ethereum','btc','eth','token','stablecoin']
+    const titleHasStrong = strongTitleKeywords.some(k => title.includes(k))
+    const isRelevant = titleHasStrong ? matchedKeywords.length >= 1 : matchedKeywords.length >= 2
+    console.log(`Crypto relevance -> titleHasStrong=${titleHasStrong}, matched=${matchedKeywords.length}, relevant=${isRelevant}`)
+    return isRelevant
+  }
+  
+  // Default rule: require at least 1 relevant keyword
+  const isRelevant = matchedKeywords.length >= 1
+  console.log(`Default relevance -> matched=${matchedKeywords.length}, relevant=${isRelevant}`)
+  return isRelevant
     console.log(`Matched keywords: ${matchedKeywords.slice(0, 3).join(', ')}`)
   }
   
@@ -466,10 +481,10 @@ function enhanceFinanceSearchQuery(searchQuery: string): string {
   
   // Map simple terms to more comprehensive search queries
   const enhancementMap: { [key: string]: string } = {
-    'stocks': 'stocks OR shares OR equity OR "stock market" OR "equity trading" OR "stock price" OR "stock analysis" OR "earnings report" OR "dividend" OR "market performance" OR "stock index" OR NYSE OR NASDAQ',
-    'crypto': 'cryptocurrency OR bitcoin OR ethereum OR "crypto market" OR "digital currency" OR "crypto price" OR "crypto trading" OR "blockchain market" OR "crypto exchange" OR "crypto regulation" OR "crypto adoption" OR "crypto news"',
-    'business': 'corporate OR "business strategy" OR "company earnings" OR "business expansion" OR "corporate restructuring" OR "business partnerships" OR "industry trends" OR "business innovation" OR "corporate governance" OR "business operations" OR "company merger" OR "business acquisition"',
-    'global trade': 'international trade OR "trade agreement" OR "trade policy" OR "trade deal" OR "trade war" OR "trade relationship" OR "import export" OR "trade dispute" OR "trade negotiations" OR "global commerce" OR "cross-border trade" OR "trade deficit" OR "trade surplus"'
+    'stocks': 'stock OR stocks OR shares OR equity OR "stock price" OR "share price" OR "stock split" OR dividend OR earnings OR EPS OR "price target" OR buyback OR NYSE OR NASDAQ OR "S&P 500" OR "Dow Jones" OR "FTSE 100"',
+    'crypto': 'cryptocurrency OR bitcoin OR ethereum OR "crypto market" OR "digital currency" OR "crypto price" OR "crypto trading" OR "crypto exchange" OR stablecoin OR CBDC OR token OR altcoin',
+    'business': 'corporate OR "business strategy" OR "company earnings" OR "business expansion" OR "corporate restructuring" OR "business partnerships" OR "industry trends" OR "corporate governance" OR "business operations" OR merger OR acquisition OR IPO',
+    'global trade': 'international trade OR "trade agreement" OR "trade policy" OR "trade deal" OR "trade dispute" OR "import export" OR "global commerce" OR "cross-border trade" OR "trade deficit" OR "trade surplus"'
   }
   
   // Check if the search query matches any of our enhanced terms
@@ -1122,8 +1137,8 @@ async function fetchGoogleCustomSearch(category: string, pageSize: number, searc
 function enhanceFinanceSearchQueryForGoogle(searchQuery: string): string {
   // Map finance subcategories to Google-optimized search queries
   const googleEnhancementMap: { [key: string]: string } = {
-    'stocks': 'stock market OR equity market OR stock analysis OR share price OR stock trading OR market performance OR earnings',
-    'crypto': 'cryptocurrency OR bitcoin OR ethereum OR crypto market OR digital currency OR blockchain OR crypto trading OR crypto price',
+    'stocks': 'stock OR stocks OR shares OR equity OR "share price" OR "stock price" OR dividend OR earnings OR EPS OR "price target" OR buyback OR NYSE OR NASDAQ OR "S&P 500" OR "Dow Jones" OR "FTSE 100"',
+    'crypto': 'cryptocurrency OR bitcoin OR ethereum OR crypto OR "digital currency" OR blockchain OR stablecoin OR CBDC OR token OR altcoin',
     'business': 'corporate news OR business strategy OR company earnings OR corporate governance OR business operations OR industry analysis',
     'global trade': 'international trade OR trade agreement OR trade policy OR global commerce OR trade relations OR import export OR trade deficit'
   }
