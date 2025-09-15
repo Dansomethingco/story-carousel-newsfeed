@@ -8,7 +8,7 @@ interface CategoryNavProps {
 
 export const CategoryNav = ({ categories, activeCategory, onCategoryChange }: CategoryNavProps) => {
   return (
-    <div className="flex justify-between w-full pb-2">
+    <div className="flex justify-between gap-3 w-full pb-2">
       {categories.map((category) => (
         <Button
           key={category}
