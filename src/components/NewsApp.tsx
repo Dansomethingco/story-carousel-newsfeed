@@ -160,21 +160,26 @@ export const NewsApp = () => {
           
           // Handle subcategories
           let searchQuery = "";
-          if (activeCategory === "finance" && activeFinanceSubcategory !== "all") {
+          if (activeCategory === "finance") {
             category = "business"; // Keep using business for API
-            switch (activeFinanceSubcategory) {
-              case "stocks":
-                searchQuery = "stocks OR shares OR equity OR stock market OR NYSE OR NASDAQ";
-                break;
-              case "crypto":
-                searchQuery = "cryptocurrency OR bitcoin OR ethereum OR crypto OR blockchain OR digital currency";
-                break;
-              case "business":
-                searchQuery = "business OR corporate OR company OR enterprise OR earnings OR revenue";
-                break;
-              case "global trade":
-                searchQuery = "trade OR import OR export OR tariff OR international trade OR global commerce";
-                break;
+            if (activeFinanceSubcategory === "all") {
+              // Combine all finance subcategories for comprehensive coverage
+              searchQuery = "stocks OR shares OR equity OR \"stock market\" OR NYSE OR NASDAQ OR \"S&P 500\" OR \"Dow Jones\" OR indices OR trading OR CFDs OR \"futures market\" OR cryptocurrency OR bitcoin OR ethereum OR crypto OR blockchain OR \"digital currency\" OR \"crypto trading\" OR business OR corporate OR company OR enterprise OR earnings OR revenue OR \"quarterly results\" OR IPO OR merger OR acquisition OR trade OR import OR export OR tariff OR \"international trade\" OR \"global commerce\" OR \"trade deals\" OR \"trade war\" OR \"supply chain\"";
+            } else {
+              switch (activeFinanceSubcategory) {
+                case "stocks":
+                  searchQuery = "stocks OR shares OR equity OR \"stock market\" OR NYSE OR NASDAQ OR \"S&P 500\" OR \"Dow Jones\" OR indices OR trading OR CFDs OR \"futures market\" OR \"options trading\" OR \"market volatility\" OR \"bull market\" OR \"bear market\"";
+                  break;
+                case "crypto":
+                  searchQuery = "cryptocurrency OR bitcoin OR ethereum OR crypto OR blockchain OR \"digital currency\" OR \"crypto trading\" OR altcoin OR \"DeFi\" OR \"NFT\" OR \"Web3\" OR \"crypto market\" OR \"bitcoin price\" OR \"ethereum price\"";
+                  break;
+                case "business":
+                  searchQuery = "business OR corporate OR company OR enterprise OR earnings OR revenue OR \"quarterly results\" OR IPO OR merger OR acquisition OR \"business news\" OR CEO OR \"corporate strategy\" OR startup OR \"market share\"";
+                  break;
+                case "global trade":
+                  searchQuery = "trade OR import OR export OR tariff OR \"international trade\" OR \"global commerce\" OR \"trade deals\" OR \"trade war\" OR \"supply chain\" OR \"trade agreement\" OR \"customs\" OR \"trade deficit\" OR \"trade surplus\"";
+                  break;
+              }
             }
           } else if (activeCategory === "football" && activeFootballSubcategory !== "all") {
             category = "sports"; // Keep using sports for API
